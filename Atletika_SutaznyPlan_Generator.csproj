@@ -9,8 +9,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Cvicebny-plan_Template.pdf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Cvicebny-plan_Template.pdf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Assets\" />
-    <Folder Include="Models\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="itext" Version="9.5.0" />
+    <PackageReference Include="itext.bouncy-castle-adapter" Version="9.5.0" />
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
   </ItemGroup>
 
 </Project>

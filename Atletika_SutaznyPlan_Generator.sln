@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atletika_SutaznyPlan_Generator", "Atletika_SutaznyPlan_Generator.csproj", "{CA35EF12-956C-4C18-8A85-8D5401A930D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atletika_SutaznyPlan_Generator", "Atletika_SutaznyPlan_Generator.csproj", "{CA35EF12-956C-4C18-8A85-8D5401A930D2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atletika.SmokeTests", "..\Atletika.SmokeTests\Atletika.SmokeTests.csproj", "{DE75A624-CFDF-4349-B38F-05326591DADF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE75A624-CFDF-4349-B38F-05326591DADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE75A624-CFDF-4349-B38F-05326591DADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE75A624-CFDF-4349-B38F-05326591DADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE75A624-CFDF-4349-B38F-05326591DADF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
