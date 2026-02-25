@@ -129,7 +129,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             {
                 if (_slots[i] is null) continue;
 
-                var diff = GetSlotDifficulty(i).ToString("0.0", culture);
+                var diff = GetSlotDifficulty(i).ToString("0.000", culture);
                 var id = GetSlotExerciseId(i);
 
                 map[AcroFieldNames.ExerciseDifficultyFields[i]] = diff;
@@ -137,7 +137,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             }
 
             // Overall
-            map[AcroFieldNames.OverallDifficulity] = OverallDifficulty.ToString("0.0", culture);
+            map[AcroFieldNames.OverallDifficulity] = OverallDifficulty.ToString("0.000", culture);
 
             return map;
         }
@@ -158,8 +158,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
         private static decimal DefaultDifficulty(int rowY, int colX)
         {
-            // difficulty depends ONLY on column: 1..5 => 0.1..0.5
-            return colX * 0.1m;
+            // column 1..5 => 0.010..0.050
+            return colX * 0.01m;
         }
 
         public void SetSlotFromImagePath(int slotIndex, string imagePath)

@@ -16,5 +16,13 @@
             MG,   // mužská štvorica
             Inv   // individuálna zostava
         }
-
-    }
+        public static class RulebookExtensions
+        {
+            public static string ToSlovakLabel(this Rulebook rb) => rb switch
+            {
+                Rulebook.DO_10_ROK => "Do 10 rokov",
+                Rulebook.DO_14_ROK => "Do 14 rokov",
+                _ => rb.ToString()
+            };
+        }
+}
