@@ -87,7 +87,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public string EventName
         {
             get => FormData.EventName ?? "";
-            set { FormData.EventName = value; OnPropertyChanged(); }
+            set
+            {
+                if (FormData.EventName == value) return;
+                FormData.EventName = value;
+                OnPropertyChanged();
+            }
         }
 
         public string TrainerName

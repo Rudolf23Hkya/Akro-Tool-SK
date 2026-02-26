@@ -153,6 +153,9 @@
             <!-- ===================== Menu ===================== -->
             <Menu Grid.Row="0" Background="#F2F2F2" BorderBrush="#C8C8C8" BorderThickness="0,1,0,1">
                 <MenuItem Header="Súbor">
+                    <MenuItem Header="Upraviť názov podujatia..." Click="EditEventName_Click"/>
+                    <MenuItem Header="Upraviť trénera a klub..." Click="EditTrainerClub_Click"/>
+                    <Separator/>
                     <MenuItem Header="Koniec" Command="{Binding ExitCommand}"/>
                 </MenuItem>
             </Menu>
