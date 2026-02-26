@@ -2,8 +2,8 @@
 <Window x:Class="Atletika_SutaznyPlan_Generator.Views.TrainerClubDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Tréner a klub"
-        Height="210"
+        Title="Tréner, kontakt a klub"
+        Height="250"
         Width="460"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
@@ -12,10 +12,11 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Zadaj trénera a názov klubu:"
+        <TextBlock Text="Zadaj trénera, kontakt a názov klubu:"
                    FontSize="16"
                    Margin="0,0,0,12"/>
 
@@ -33,7 +34,20 @@
                      Text="{Binding TrainerName, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="90"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Kontakt:"
+                       VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1"
+                     Height="30"
+                     Text="{Binding TrainerContact, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="90"/>
                 <ColumnDefinition Width="*"/>
@@ -46,7 +60,7 @@
                      Text="{Binding ClubName, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
-        <StackPanel Grid.Row="3"
+        <StackPanel Grid.Row="4"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,16,0,0">

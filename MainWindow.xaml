@@ -194,7 +194,7 @@
                     <GroupBox Grid.Row="1"
                               Header="Disciplína"
                               Margin="0,4,0,0"
-                              BorderBrush="#8B5CF6"
+                              BorderBrush="Black"
                               BorderThickness="2"
                               Padding="14">
                         <Grid>

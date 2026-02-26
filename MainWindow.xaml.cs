@@ -68,7 +68,7 @@ namespace Atletika_SutaznyPlan_Generator
             if (DataContext is not MainWindowViewModel vm)
                 return;
 
-            var dlg = new TrainerClubDialog(vm.TrainerName, vm.ClubName)
+            var dlg = new TrainerClubDialog(vm.TrainerName, vm.TrainerContact, vm.ClubName)
             {
                 Owner = this
             };
@@ -76,6 +76,7 @@ namespace Atletika_SutaznyPlan_Generator
             if (dlg.ShowDialog() == true)
             {
                 vm.TrainerName = dlg.TrainerName?.Trim() ?? "";
+                vm.TrainerContact = dlg.TrainerContact?.Trim() ?? "";
                 vm.ClubName = dlg.ClubName?.Trim() ?? "";
             }
         }

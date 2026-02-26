@@ -35,11 +35,14 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public Rulebook SelectedRulebook
         {
             get => _selectedRulebook;
-            set => SetProperty(ref _selectedRulebook, value);
+            set
+            {
+                if (!SetProperty(ref _selectedRulebook, value)) return;
+                UpdatePdfCategoryFields();
+            }
         }
 
         // === Printing ===
-        private string? _templatePdfPath;
         public ICommand ExportPdfCommand { get; }
 
         // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
@@ -76,6 +79,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(IsMxP));
                 OnPropertyChanged(nameof(IsWG));
                 OnPropertyChanged(nameof(IsMG));
+
+                UpdatePdfCategoryFields();
             }
         }
 
@@ -104,6 +109,17 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         {
             get => FormData.TrainerName ?? "";
             set { FormData.TrainerName = value; OnPropertyChanged(); }
+        }
+
+        public string TrainerContact
+        {
+            get => FormData.TrainerContact ?? "";
+            set
+            {
+                if (FormData.TrainerContact == value) return;
+                FormData.TrainerContact = value;
+                OnPropertyChanged();
+            }
         }
 
         public string ClubName
@@ -242,6 +258,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             SeedSlots();
             FormData.Discipline = SelectedRoutine.ToString();
+            UpdatePdfCategoryFields();
         }
 
         private void SeedSlots()
@@ -312,8 +329,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         {
             try
             {
-                if (!EnsureTemplatePdfPath())
-                    return;
+                var templatePdfPath = GetTemplatePdfPath();
 
                 var suggestedBaseName = BuildSafeFileName(
                     string.IsNullOrWhiteSpace(FormData.EventName)
@@ -333,7 +349,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     return;
 
                 TrainingPlanPdfIText.ExportFromFormData(
-                    _templatePdfPath!,
+                    templatePdfPath,
                     saveDialog.FileName,
                     FormData,
                     new CultureInfo("sk-SK"));
@@ -353,25 +369,33 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     MessageBoxImage.Error);
             }
         }
-
-        private bool EnsureTemplatePdfPath()
+        private static string GetTemplatePdfPath()
         {
-            if (!string.IsNullOrWhiteSpace(_templatePdfPath) && File.Exists(_templatePdfPath))
-                return true;
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Cvicebny-plan_Template.pdf");
 
-            var openDialog = new OpenFileDialog
-            {
-                Title = "Vyber PDF šablónu",
-                Filter = "PDF súbor (*.pdf)|*.pdf",
-                CheckFileExists = true,
-                Multiselect = false
-            };
+            if (!File.Exists(path))
+                throw new FileNotFoundException("PDF šablóna sa nenašla.", path);
 
-            if (openDialog.ShowDialog() != true)
-                return false;
+            return path;
+        }
 
-            _templatePdfPath = openDialog.FileName;
-            return true;
+        private static string MapTeamSizeText(Category category) => category switch
+        {
+            Category.WP or Category.MP or Category.MxP => "DUO",
+            Category.WG => "TRIO",
+            Category.MG => "QUARTET",
+            Category.Inv => "SOLO",
+            _ => ""
+        };
+
+        private void UpdatePdfCategoryFields()
+        {
+            FormData.Category1 = SelectedBackendCategory.ToString();
+            FormData.Category2 = SelectedRulebook.ToSlovakLabel();
+            FormData.TeamSizeText = MapTeamSizeText(SelectedBackendCategory);
+
+            // Optional, only if something in the UI binds directly to these
+            OnPropertyChanged(nameof(FormData));
         }
 
         private static string BuildSafeFileName(string name)
