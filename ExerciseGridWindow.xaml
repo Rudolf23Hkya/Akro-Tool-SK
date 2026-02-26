@@ -73,10 +73,19 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="{Binding WindowTitle}"
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding WindowTitle}"
                            FontSize="24"
                            FontWeight="Bold"
                            VerticalAlignment="Center"/>
+
+                    <ToggleButton Margin="14,0,0,0"
+                          Padding="12,6"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding ShowIndividualTable, Mode=TwoWay}"
+                          IsEnabled="{Binding CanToggleIndividual}"
+                          Content="{Binding ToggleText}" />
+                </StackPanel>
 
                 <Button Grid.Column="1"
                         Content="Zavrieť"
@@ -89,7 +98,7 @@
 
             <!-- 6 x 5 grid of exercises -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl ItemsSource="{Binding Exercises}"
+                <ItemsControl ItemsSource="{Binding VisibleExercises}"
                               ItemTemplate="{StaticResource ExerciseImageButtonTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

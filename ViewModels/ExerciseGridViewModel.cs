@@ -16,13 +16,40 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public Category Category { get; }
         public int SlotIndex { get; }
 
-        public string WindowTitle => $"Cvičenia: {Category} ({Rulebook.ToSlovakLabel()})";
-
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
+        public ObservableCollection<ExerciseCardVm> IndividualExercises { get; } = new();
+
+        public ObservableCollection<ExerciseCardVm> VisibleExercises
+            => ShowIndividualTable ? IndividualExercises : Exercises;
+
+        private bool _showIndividualTable;
+        public bool ShowIndividualTable
+        {
+            get => _showIndividualTable;
+            set
+            {
+                if (SetProperty(ref _showIndividualTable, value))
+                {
+                    OnPropertyChanged(nameof(VisibleExercises));
+                    OnPropertyChanged(nameof(WindowTitle));
+                    OnPropertyChanged(nameof(ToggleText));
+                }
+            }
+        }
+
+        public bool CanToggleIndividual
+            => Category != Atletika_SutaznyPlan_Generator.Models.Category.Inv;
+
+        public string ToggleText
+            => ShowIndividualTable
+                ? "Zobrazuje sa: individuálna zostava"
+                : "Prepnúť na individuálnu zostavu";
+
+        public string WindowTitle
+            => $"Cvičenia: {(ShowIndividualTable ? Atletika_SutaznyPlan_Generator.Models.Category.Inv : Category)} ({Rulebook.ToSlovakLabel()})";
 
         public ICommand ExerciseClickedCommand { get; }
 
-        // notify MainWindowViewModel + close the picker
         public event Action<ExerciseCardVm>? ExerciseSelected;
         public event Action? RequestClose;
 
@@ -46,16 +73,25 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         private void LoadFromRepository()
         {
-            Exercises.Clear();
+            LoadTableInto(Exercises, Category);
+            LoadTableInto(IndividualExercises, Atletika_SutaznyPlan_Generator.Models.Category.Inv);
 
-            // Backend expects 6 rows x 5 columns
-            var cells = _repo.GetTable(Rulebook, Category, rows: 6, cols: 5);
+            OnPropertyChanged(nameof(VisibleExercises));
+            OnPropertyChanged(nameof(WindowTitle));
+            OnPropertyChanged(nameof(ToggleText));
+        }
+
+        private void LoadTableInto(ObservableCollection<ExerciseCardVm> target, Atletika_SutaznyPlan_Generator.Models.Category category)
+        {
+            target.Clear();
+
+            var cells = _repo.GetTable(Rulebook, category, rows: 6, cols: 5);
 
             foreach (var cell in cells)
             {
                 var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
 
-                Exercises.Add(new ExerciseCardVm
+                target.Add(new ExerciseCardVm
                 {
                     Label = $"{cell.Col:00}-{cell.Row:00}",
                     Image = img,
