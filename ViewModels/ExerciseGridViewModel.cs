@@ -2,45 +2,68 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using Atletika_SutaznyPlan_Generator.Models;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
-    /// <summary>
-    /// ViewModel for the exercise picker window (6x5 grid of clickable images).
-    /// Backend hookup can replace SeedDemoExercises later.
-    /// </summary>
     public class ExerciseGridViewModel : ViewModelBase
     {
-        // Keep this in sync with MainWindowViewModel.PlaceholderImagePath (or refactor to a shared helper later).
-        private const string PlaceholderImagePath = "Assets/SGF_logo1.png";
-        public ExerciseCategoryVm Category { get; }
+        private readonly ExerciseImageRepository _repo;
+        private readonly ImageSource? _placeholder;
 
-        public string WindowTitle => $"Cvičenia: {Category.Title}";
+        public Rulebook Rulebook { get; }
+        public Category Category { get; }
+        public int SlotIndex { get; }
+
+        public string WindowTitle => $"Cvičenia: {Category} ({Rulebook.ToSlovakLabel()})";
 
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
 
         public ICommand ExerciseClickedCommand { get; }
 
-        public ExerciseGridViewModel(ExerciseCategoryVm category)
+        // notify MainWindowViewModel + close the picker
+        public event Action<ExerciseCardVm>? ExerciseSelected;
+        public event Action? RequestClose;
+
+        public ExerciseGridViewModel(
+            ExerciseImageRepository repo,
+            Rulebook rulebook,
+            Category category,
+            int slotIndex,
+            ImageSource? placeholder)
         {
+            _repo = repo;
+            Rulebook = rulebook;
             Category = category;
+            SlotIndex = slotIndex;
+            _placeholder = placeholder;
+
             ExerciseClickedCommand = new RelayCommand(ExerciseClicked);
 
-            SeedDemoExercises();
+            LoadFromRepository();
         }
 
-        private void SeedDemoExercises()
+        private void LoadFromRepository()
         {
             Exercises.Clear();
 
-            // 6 x 5 = 30
-            for (int i = 1; i <= 30; i++)
+            // Backend expects 6 rows x 5 columns
+            var cells = _repo.GetTable(Rulebook, Category, rows: 6, cols: 5);
+
+            foreach (var cell in cells)
             {
+                var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
+
                 Exercises.Add(new ExerciseCardVm
                 {
-                    Label = $"{i:00}",
-                    Image = LoadPackImage(PlaceholderImagePath)
+                    Label = $"{cell.Col:00}-{cell.Row:00}",
+                    Image = img,
+                    ImagePath = cell.ImagePath,
+                    X = cell.Col,
+                    Y = cell.Row,
+                    Rulebook = cell.Rulebook,
+                    Category = cell.Category
                 });
             }
         }
@@ -50,20 +73,14 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (parameter is not ExerciseCardVm ex)
                 return;
 
-            MessageBox.Show($"Klik: {Category.Title} / {ex.Label}");
-        }
+            if (string.IsNullOrWhiteSpace(ex.ImagePath))
+            {
+                MessageBox.Show("Pre toto políčko sa nenašiel obrázok v databáze.", "Chýba obrázok");
+                return;
+            }
 
-        private static BitmapImage? LoadPackImage(string relativePath)
-        {
-            try
-            {
-                // Image file should have Build Action = Resource
-                return new BitmapImage(new Uri($"pack://application:,,,/{relativePath}", UriKind.Absolute));
-            }
-            catch
-            {
-                return null;
-            }
+            ExerciseSelected?.Invoke(ex);
+            RequestClose?.Invoke();
         }
     }
 }

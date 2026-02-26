@@ -40,7 +40,10 @@
 
                             <!-- Image area -->
                             <Border Grid.Row="0" Background="#EEEEEE">
-                                <Image Source="{Binding Image, TargetNullValue=/assets/sgf_logo1.png, FallbackValue=/assets/sgf_logo2.png}"
+                                <Image Source="{Binding Image,
+                                       TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
+                                       FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
+                                       
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        HorizontalAlignment="Center"
@@ -72,7 +75,7 @@
                         Cursor="Hand"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Top"
-                        Command="{Binding DataContext.OpenCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                         CommandParameter="{Binding}">
                     <Border CornerRadius="8"
                             BorderBrush="Black"
@@ -89,7 +92,10 @@
 
                                 <!-- Image area -->
                                 <Border Grid.Row="0" Background="#EEEEEE">
-                                    <Image Source="{Binding Image, TargetNullValue=/assets/sgf_logo1.png, FallbackValue=/assets/sgf_logo1.png}"
+                                    <Image Source="{Binding Image,
+                                            TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
+                                            FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
+                                           
                                            Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="HighQuality"
                                            HorizontalAlignment="Center"
@@ -142,8 +148,6 @@
             <!-- ===================== Menu ===================== -->
             <Menu Grid.Row="0" Background="#F2F2F2" BorderBrush="#C8C8C8" BorderThickness="0,1,0,1">
                 <MenuItem Header="Súbor">
-                    <MenuItem Header="Načítať predchádzajúci tím" Command="{Binding LoadPreviousTeamCommand}"/>
-                    <Separator/>
                     <MenuItem Header="Koniec" Command="{Binding ExitCommand}"/>
                 </MenuItem>
             </Menu>
@@ -165,8 +169,8 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
                         <TextBlock Text="Kategória" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <ComboBox Width="220" Height="30"
-                          ItemsSource="{Binding Categories}"
-                          SelectedItem="{Binding SelectedCategory}"
+                          ItemsSource="{Binding Rulebooks}"
+                          SelectedItem="{Binding SelectedRulebook}"
                           VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -197,14 +201,14 @@
                                     Style="{StaticResource SoftSeparatorStyle}"/>
 
                             <StackPanel Grid.Column="2">
-                                <RadioButton Content="WP"  Margin="0,6,0,0" IsChecked="{Binding IsWP}"/>
-                                <RadioButton Content="MP"  Margin="0,6,0,0" IsChecked="{Binding IsMP}"/>
-                                <RadioButton Content="MxP" Margin="0,6,0,0" IsChecked="{Binding IsMxP}"/>
+                                <RadioButton Content="WP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWP}"/>
+                                <RadioButton Content="MP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMP}"/>
+                                <RadioButton Content="MxP" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMxP}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="3">
-                                <RadioButton Content="WG" Margin="0,6,0,0" IsChecked="{Binding IsWG}"/>
-                                <RadioButton Content="MG" Margin="0,6,0,0" IsChecked="{Binding IsMG}"/>
+                                <RadioButton Content="WG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWG}"/>
+                                <RadioButton Content="MG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMG}"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
@@ -276,28 +280,56 @@
                 Margin="0"
                 Style="{StaticResource SoftSeparatorStyle}"/>
 
-            <!-- ===================== Main area: 12 clickable "windows" ===================== -->
-            <Grid Grid.Row="3" Margin="14,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="78"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0"
-                           Text="Vyber cvičebný tvar"
-                           FontSize="28"
-                           FontWeight="Bold"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding ExerciseCategories}"
-                                  ItemTemplate="{StaticResource CategoryTileTemplate}">
+            <!-- ===================== Main 12-tile area ===================== -->
+            <Grid Grid.Row="3" Margin="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding ExerciseSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Columns="4"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Margin="10"
+                                    Cursor="Hand"
+                                    Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}">
+                                <Border CornerRadius="6"
+                                BorderBrush="Black"
+                                BorderThickness="1"
+                                SnapsToDevicePixels="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="34"/>
+                                            </Grid.RowDefinitions>
+
+                                            <Border Grid.Row="0" Background="#EEEEEE">
+                                                <Image Source="{Binding Image}"
+                                           Stretch="Uniform"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                                            </Border>
+
+                                            <Border Grid.Row="1"
+                                        Background="White"
+                                        BorderBrush="Black"
+                                        BorderThickness="0,1,0,0">
+                                                <TextBlock Text="{Binding Label}"
+                                                   FontSize="16"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
             </Grid>

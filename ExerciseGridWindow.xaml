@@ -32,7 +32,9 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Background="#F3F3F3" ClipToBounds="True">
-                            <Image Source="{Binding Image, TargetNullValue=/assets/sgf_logo1.png, FallbackValue=/assets/sgf_logo1.png}"
+                            <Image Source="{Binding Image,
+                                    TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
+                                    FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
                                    Stretch="UniformToFill"
                                    RenderOptions.BitmapScalingMode="HighQuality"
                                    HorizontalAlignment="Center"
@@ -91,7 +93,7 @@
                               ItemTemplate="{StaticResource ExerciseImageButtonTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="6" Rows="5"/>
+                            <UniformGrid Columns="5" Rows="6"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

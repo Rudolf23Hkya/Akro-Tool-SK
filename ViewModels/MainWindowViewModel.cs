@@ -1,33 +1,43 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Atletika_SutaznyPlan_Generator;
+using Atletika_SutaznyPlan_Generator.Models;
+using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
     public enum RoutineType { Combi, Tempo, Balans }
-    public enum FormationType { WP, MP, MxP }
-    public enum GroupType { WG, MG }
 
     public class MainWindowViewModel : ViewModelBase
     {
-        // Change this to switch the default placeholder everywhere.
-        // Make sure the file exists in your project under /Assets and has Build Action = Resource.
-        private const string PlaceholderImagePath = "Assets/SGF_logo1.png";
-        // --- Top left: category
-        public ObservableCollection<string> Categories { get; } =
-            new() { "Kategória 1", "Kategória 2" };
+        private const string PlaceholderImagePath = "assets/sgf_logo1.png";
+        // === Placeholder (WPF Resource) ===
 
-        private string? _selectedCategory;
-        public string? SelectedCategory
+        private const string PlaceholderPackUri = "pack://application:,,,/assets/sgf_logo1.png";
+        private readonly ImageSource? _placeholderImage = LoadPackImage(PlaceholderPackUri);
+
+        // === Backend objects ===
+        private readonly ExerciseImageRepository _repo;
+        public TrainingPlanFormData FormData { get; } = new();
+
+        // === Rulebook (age category) ===
+        public ObservableCollection<Rulebook> Rulebooks { get; } =
+            new(Enum.GetValues(typeof(Rulebook)).Cast<Rulebook>());
+
+        private Rulebook _selectedRulebook = Rulebook.DO_10_ROK;
+        public Rulebook SelectedRulebook
         {
-            get => _selectedCategory;
-            set => SetProperty(ref _selectedCategory, value);
+            get => _selectedRulebook;
+            set => SetProperty(ref _selectedRulebook, value);
         }
 
-        // --- Discipline selections (radio buttons)
+        // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
         private RoutineType _selectedRoutine = RoutineType.Balans;
         public RoutineType SelectedRoutine
         {
@@ -38,116 +48,216 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(IsCombi));
                 OnPropertyChanged(nameof(IsTempo));
                 OnPropertyChanged(nameof(IsBalans));
+
+                // backend priority: store as string
+                FormData.Discipline = _selectedRoutine.ToString();
             }
         }
 
-        private FormationType _selectedFormation = FormationType.MxP;
-        public FormationType SelectedFormation
+        public bool IsCombi { get => SelectedRoutine == RoutineType.Combi; set { if (value) SelectedRoutine = RoutineType.Combi; } }
+        public bool IsTempo { get => SelectedRoutine == RoutineType.Tempo; set { if (value) SelectedRoutine = RoutineType.Tempo; } }
+        public bool IsBalans { get => SelectedRoutine == RoutineType.Balans; set { if (value) SelectedRoutine = RoutineType.Balans; } }
+
+        // === Backend Category selection (ONE shared selection across WP/MP/MxP/WG/MG) ===
+        private Category _selectedBackendCategory = Category.MxP;
+        public Category SelectedBackendCategory
         {
-            get => _selectedFormation;
+            get => _selectedBackendCategory;
             set
             {
-                if (!SetProperty(ref _selectedFormation, value)) return;
+                if (!SetProperty(ref _selectedBackendCategory, value)) return;
                 OnPropertyChanged(nameof(IsWP));
                 OnPropertyChanged(nameof(IsMP));
                 OnPropertyChanged(nameof(IsMxP));
-            }
-        }
-
-        private GroupType _selectedGroup = GroupType.WG;
-        public GroupType SelectedGroup
-        {
-            get => _selectedGroup;
-            set
-            {
-                if (!SetProperty(ref _selectedGroup, value)) return;
                 OnPropertyChanged(nameof(IsWG));
                 OnPropertyChanged(nameof(IsMG));
             }
         }
 
-        // Radio-friendly bools
-        public bool IsCombi { get => SelectedRoutine == RoutineType.Combi; set { if (value) SelectedRoutine = RoutineType.Combi; } }
-        public bool IsTempo { get => SelectedRoutine == RoutineType.Tempo; set { if (value) SelectedRoutine = RoutineType.Tempo; } }
-        public bool IsBalans { get => SelectedRoutine == RoutineType.Balans; set { if (value) SelectedRoutine = RoutineType.Balans; } }
+        public bool IsWP { get => SelectedBackendCategory == Category.WP; set { if (value) SelectedBackendCategory = Category.WP; } }
+        public bool IsMP { get => SelectedBackendCategory == Category.MP; set { if (value) SelectedBackendCategory = Category.MP; } }
+        public bool IsMxP { get => SelectedBackendCategory == Category.MxP; set { if (value) SelectedBackendCategory = Category.MxP; } }
+        public bool IsWG { get => SelectedBackendCategory == Category.WG; set { if (value) SelectedBackendCategory = Category.WG; } }
+        public bool IsMG { get => SelectedBackendCategory == Category.MG; set { if (value) SelectedBackendCategory = Category.MG; } }
 
-        public bool IsWP { get => SelectedFormation == FormationType.WP; set { if (value) SelectedFormation = FormationType.WP; } }
-        public bool IsMP { get => SelectedFormation == FormationType.MP; set { if (value) SelectedFormation = FormationType.MP; } }
-        public bool IsMxP { get => SelectedFormation == FormationType.MxP; set { if (value) SelectedFormation = FormationType.MxP; } }
+        // === Main 12 slots (slotIndex 0..11) ===
+        public ObservableCollection<ExerciseCardVm> ExerciseSlots { get; } = new();
 
-        public bool IsWG { get => SelectedGroup == GroupType.WG; set { if (value) SelectedGroup = GroupType.WG; } }
-        public bool IsMG { get => SelectedGroup == GroupType.MG; set { if (value) SelectedGroup = GroupType.MG; } }
+        // === Common header fields (mapped into backend FormData) ===
+        public string EventName
+        {
+            get => FormData.EventName ?? "";
+            set { FormData.EventName = value; OnPropertyChanged(); }
+        }
 
-        // --- Athlete cards (bind to your existing TextBoxes/DatePickers)
-        private string _topName = "Tina Muster";
-        public string TopName { get => _topName; set => SetProperty(ref _topName, value); }
+        public string TrainerName
+        {
+            get => FormData.TrainerName ?? "";
+            set { FormData.TrainerName = value; OnPropertyChanged(); }
+        }
 
-        private DateTime? _topBirth = new DateTime(2009, 1, 9);
-        public DateTime? TopBirth { get => _topBirth; set => SetProperty(ref _topBirth, value); }
+        public string ClubName
+        {
+            get => FormData.ClubName ?? "";
+            set { FormData.ClubName = value; OnPropertyChanged(); }
+        }
 
-        private string _middle1Name = "Maria MAX";
-        public string Middle1Name { get => _middle1Name; set => SetProperty(ref _middle1Name, value); }
+        // === Athlete fields (UI stays DateTime?, backend stays string?) ===
+        private static readonly CultureInfo SlovakCulture = new("sk-SK");
 
-        private DateTime? _middle1Birth = new DateTime(2005, 1, 20);
-        public DateTime? Middle1Birth { get => _middle1Birth; set => SetProperty(ref _middle1Birth, value); }
+        private static DateTime? ParseDob(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
 
-        private string _middle2Name = "Name";
-        public string Middle2Name { get => _middle2Name; set => SetProperty(ref _middle2Name, value); }
+            string[] formats = { "d.M.yyyy", "dd.MM.yyyy", "d.M.yy", "dd.MM.yy" };
 
-        private DateTime? _middle2Birth = new DateTime(2005, 1, 1);
-        public DateTime? Middle2Birth { get => _middle2Birth; set => SetProperty(ref _middle2Birth, value); }
+            return DateTime.TryParseExact(value, formats, SlovakCulture, DateTimeStyles.None, out var parsed)
+                ? parsed
+                : null;
+        }
 
-        private string _baseName = "abeth Langename";
-        public string BaseName { get => _baseName; set => SetProperty(ref _baseName, value); }
+        private static string? FormatDob(DateTime? value)
+            => value?.ToString("d.M.yyyy", SlovakCulture);
 
-        private DateTime? _baseBirth = new DateTime(2005, 2, 11);
-        public DateTime? BaseBirth { get => _baseBirth; set => SetProperty(ref _baseBirth, value); }
+        public string TopName
+        {
+            get => FormData.AthleteTopName ?? "";
+            set
+            {
+                if (FormData.AthleteTopName == value) return;
+                FormData.AthleteTopName = value;
+                OnPropertyChanged();
+            }
+        }
 
-        // --- Footer
-        private string _trainerName = "Anna Malá";
-        public string TrainerName { get => _trainerName; set => SetProperty(ref _trainerName, value); }
+        public DateTime? TopBirth
+        {
+            get => ParseDob(FormData.AthleteTopDob);
+            set
+            {
+                var formatted = FormatDob(value);
+                if (FormData.AthleteTopDob == formatted) return;
+                FormData.AthleteTopDob = formatted;
+                OnPropertyChanged();
+            }
+        }
 
-        private string _clubName = "Rebels Gym";
-        public string ClubName { get => _clubName; set => SetProperty(ref _clubName, value); }
+        public string Middle1Name
+        {
+            get => FormData.AthleteMiddle1Name ?? "";
+            set
+            {
+                if (FormData.AthleteMiddle1Name == value) return;
+                FormData.AthleteMiddle1Name = value;
+                OnPropertyChanged();
+            }
+        }
 
-        private string _eventName = "December Acro Open Košice";
-        public string EventName { get => _eventName; set => SetProperty(ref _eventName, value); }
+        public DateTime? Middle1Birth
+        {
+            get => ParseDob(FormData.AthleteMiddle1Dob);
+            set
+            {
+                var formatted = FormatDob(value);
+                if (FormData.AthleteMiddle1Dob == formatted) return;
+                FormData.AthleteMiddle1Dob = formatted;
+                OnPropertyChanged();
+            }
+        }
 
-        // --- Main selector: 12 clickable "windows" (tiles)
-        public ObservableCollection<ExerciseCategoryVm> ExerciseCategories { get; } = new();
+        public string Middle2Name
+        {
+            get => FormData.AthleteMiddle2Name ?? "";
+            set
+            {
+                if (FormData.AthleteMiddle2Name == value) return;
+                FormData.AthleteMiddle2Name = value;
+                OnPropertyChanged();
+            }
+        }
 
-        // --- Commands (menu + buttons)
-        public ICommand LoadPreviousTeamCommand { get; }
-        public ICommand OpenCategoryCommand { get; }
+        public DateTime? Middle2Birth
+        {
+            get => ParseDob(FormData.AthleteMiddle2Dob);
+            set
+            {
+                var formatted = FormatDob(value);
+                if (FormData.AthleteMiddle2Dob == formatted) return;
+                FormData.AthleteMiddle2Dob = formatted;
+                OnPropertyChanged();
+            }
+        }
+
+        public string BaseName
+        {
+            get => FormData.AthleteBaseName ?? "";
+            set
+            {
+                if (FormData.AthleteBaseName == value) return;
+                FormData.AthleteBaseName = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public DateTime? BaseBirth
+        {
+            get => ParseDob(FormData.AthleteBaseDob);
+            set
+            {
+                var formatted = FormatDob(value);
+                if (FormData.AthleteBaseDob == formatted) return;
+                FormData.AthleteBaseDob = formatted;
+                OnPropertyChanged();
+            }
+        }
+
+        // === Commands ===
+        public ICommand OpenSlotCommand { get; }
         public ICommand ExitCommand { get; }
 
         public MainWindowViewModel()
         {
-            LoadPreviousTeamCommand = new RelayCommand(LoadPreviousTeam);
-            OpenCategoryCommand = new RelayCommand(OpenCategory);
+            // Locate DB root (must contain do10_db / do14_db)
+            var dbRoot = ResolveDbRoot();
+            _repo = new ExerciseImageRepository(dbRoot);
+
+            OpenSlotCommand = new RelayCommand(OpenSlot);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
 
-            SeedDemoCategories();
-            SelectedCategory = Categories.Count > 0 ? Categories[0] : null;
+            SeedSlots();
+            FormData.Discipline = SelectedRoutine.ToString();
         }
 
-        private void LoadPreviousTeam()
+        private void SeedSlots()
         {
-            // TODO: replace with real load logic
-            TopName = "Loaded Top";
-            Middle1Name = "Loaded Middle";
-            Middle2Name = "Loaded Middle 2";
-            BaseName = "Loaded Base";
+            ExerciseSlots.Clear();
+            for (int i = 0; i < 12; i++)
+            {
+                ExerciseSlots.Add(new ExerciseCardVm
+                {
+                    SlotIndex = i,
+                    Label = $"Okno {i + 1}",
+                    Image = _placeholderImage
+                });
+            }
         }
 
-        private void OpenCategory(object? parameter)
+        private void OpenSlot(object? parameter)
         {
-            if (parameter is not ExerciseCategoryVm cat)
+            if (parameter is not ExerciseCardVm slot)
                 return;
 
-            // For now: open a demo grid window with placeholder exercise buttons.
-            // Later you can feed it from your backend.
-            var gridVm = new ExerciseGridViewModel(cat);
+            var gridVm = new ExerciseGridViewModel(
+                _repo,
+                SelectedRulebook,
+                SelectedBackendCategory,
+                slot.SlotIndex,
+                _placeholderImage);
+
+            ExerciseCardVm? chosen = null;
+            gridVm.ExerciseSelected += ex => chosen = ex;
+
             var win = new ExerciseGridWindow
             {
                 DataContext = gridVm,
@@ -155,36 +265,72 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
 
-            win.ShowDialog();
-        }
-
-        private void SeedDemoCategories()
-        {
-            ExerciseCategories.Clear();
-
-            // You can rename these to your real 12 exercise "windows" later.
-            for (int i = 1; i <= 12; i++)
+            gridVm.RequestClose += () =>
             {
-                ExerciseCategories.Add(new ExerciseCategoryVm
-                {
-                    Id = i,
-                    Title = $"Okno {i}",
-                    Image = LoadPackImage(PlaceholderImagePath)
-                });
-            }
+                win.DialogResult = true;
+                win.Close();
+            };
+
+            win.ShowDialog();
+
+            if (chosen?.ImagePath is null)
+                return;
+
+            // Update backend form data + UI tile
+            FormData.SetSlot(
+                slot.SlotIndex,
+                chosen.Rulebook,
+                chosen.Category,
+                chosen.X,
+                chosen.Y,
+                chosen.ImagePath);
+
+            slot.Image = chosen.Image;
+            slot.ImagePath = chosen.ImagePath;
+            slot.X = chosen.X;
+            slot.Y = chosen.Y;
+            slot.Rulebook = chosen.Rulebook;
+            slot.Category = chosen.Category;
         }
 
-        private static BitmapImage? LoadPackImage(string relativePath)
+        private static ImageSource? LoadPackImage(string packUri)
         {
             try
             {
-                // Image file should have Build Action = Resource
-                return new BitmapImage(new Uri($"pack://application:,,,/{relativePath}", UriKind.Absolute));
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(packUri, UriKind.Absolute);
+                bmp.EndInit();
+                bmp.Freeze();
+                return bmp;
             }
             catch
             {
                 return null;
             }
+        }
+
+        private static string ResolveDbRoot()
+        {
+            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+
+            for (int i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
+            {
+                foreach (var folderName in new[] { "DataBase", "Database", "database" })
+                {
+                    var candidate = Path.Combine(dir.FullName, folderName);
+
+                    if (Directory.Exists(Path.Combine(candidate, "do10_db")) ||
+                        Directory.Exists(Path.Combine(candidate, "do14_db")))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+
+            // fallback (repo will just index nothing)
+            return AppDomain.CurrentDomain.BaseDirectory;
         }
     }
 }
