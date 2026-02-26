@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Atletika_SutaznyPlan_Generator;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
@@ -12,6 +13,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
     public class MainWindowViewModel : ViewModelBase
     {
+        // Change this to switch the default placeholder everywhere.
+        // Make sure the file exists in your project under /Assets and has Build Action = Resource.
+        private const string PlaceholderImagePath = "Assets/SGF_logo1.png";
         // --- Top left: category
         public ObservableCollection<string> Categories { get; } =
             new() { "Kategória 1", "Kategória 2" };
@@ -109,24 +113,21 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private string _eventName = "December Acro Open Košice";
         public string EventName { get => _eventName; set => SetProperty(ref _eventName, value); }
 
-        // --- Exercise cards (already referenced by your ItemsControls)
-        public ObservableCollection<ExerciseCardVm> IndividualExercises { get; } = new();
-        public ObservableCollection<ExerciseCardVm> GroupExercises { get; } = new();
+        // --- Main selector: 12 clickable "windows" (tiles)
+        public ObservableCollection<ExerciseCategoryVm> ExerciseCategories { get; } = new();
 
         // --- Commands (menu + buttons)
         public ICommand LoadPreviousTeamCommand { get; }
-        public ICommand ChooseIndividualCommand { get; }
-        public ICommand ChooseGroupCommand { get; }
+        public ICommand OpenCategoryCommand { get; }
         public ICommand ExitCommand { get; }
 
         public MainWindowViewModel()
         {
             LoadPreviousTeamCommand = new RelayCommand(LoadPreviousTeam);
-            ChooseIndividualCommand = new RelayCommand(() => ChooseSet(isIndividual: true));
-            ChooseGroupCommand = new RelayCommand(() => ChooseSet(isIndividual: false));
+            OpenCategoryCommand = new RelayCommand(OpenCategory);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
 
-            SeedDemoCards();
+            SeedDemoCategories();
             SelectedCategory = Categories.Count > 0 ? Categories[0] : null;
         }
 
@@ -139,33 +140,36 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             BaseName = "Loaded Base";
         }
 
-        private void ChooseSet(bool isIndividual)
+        private void OpenCategory(object? parameter)
         {
-            // TODO: open your chooser dialog / selection screen
-            // For now, just a placeholder hook.
-            if (isIndividual)
-                MessageBox.Show("Choose Individual clicked");
-            else
-                MessageBox.Show("Choose Group clicked");
+            if (parameter is not ExerciseCategoryVm cat)
+                return;
+
+            // For now: open a demo grid window with placeholder exercise buttons.
+            // Later you can feed it from your backend.
+            var gridVm = new ExerciseGridViewModel(cat);
+            var win = new ExerciseGridWindow
+            {
+                DataContext = gridVm,
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            win.ShowDialog();
         }
 
-        private void SeedDemoCards()
+        private void SeedDemoCategories()
         {
-            IndividualExercises.Clear();
-            GroupExercises.Clear();
+            ExerciseCategories.Clear();
 
-            for (int i = 1; i <= 6; i++)
+            // You can rename these to your real 12 exercise "windows" later.
+            for (int i = 1; i <= 12; i++)
             {
-                IndividualExercises.Add(new ExerciseCardVm
+                ExerciseCategories.Add(new ExerciseCategoryVm
                 {
-                    Label = $"R{i} - 0.{i:000}",
-                    Image = LoadPackImage("Assets/placeholder.png")
-                });
-
-                GroupExercises.Add(new ExerciseCardVm
-                {
-                    Label = $"G{i} - 0.{i:000}",
-                    Image = LoadPackImage("Assets/placeholder.png")
+                    Id = i,
+                    Title = $"Okno {i}",
+                    Image = LoadPackImage(PlaceholderImagePath)
                 });
             }
         }
