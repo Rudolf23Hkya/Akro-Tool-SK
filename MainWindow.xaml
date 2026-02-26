@@ -1,6 +1,7 @@
 <Window x:Class="Atletika_SutaznyPlan_Generator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Atletika_SutaznyPlan_Generator.Converters"
         xmlns:vm="clr-namespace:Atletika_SutaznyPlan_Generator.ViewModels"
         Title="AkroBatika Printer"
         Width="1300" Height="850"
@@ -12,6 +13,10 @@
     <Window.DataContext>
         <vm:MainWindowViewModel/>
     </Window.DataContext>
+    
+    <Window.Resources>
+        <conv:RulebookToSlovakLabelConverter x:Key="RulebookToSlovakLabelConverter" />
+    </Window.Resources>
 
     <!-- Outer frame (now square, no clipping) -->
     <Border CornerRadius="0"
@@ -168,10 +173,18 @@
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
                         <TextBlock Text="Kategória" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                        <ComboBox Width="220" Height="30"
-                          ItemsSource="{Binding Rulebooks}"
-                          SelectedItem="{Binding SelectedRulebook}"
-                          VerticalAlignment="Center"/>
+
+                        <ComboBox Width="220"
+                              Height="30"
+                              ItemsSource="{Binding Rulebooks}"
+                              SelectedItem="{Binding SelectedRulebook}"
+                              VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource RulebookToSlovakLabelConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </StackPanel>
 
                     <GroupBox Grid.Row="1"
