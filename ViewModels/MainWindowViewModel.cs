@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Atletika_SutaznyPlan_Generator.Models;
 using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
+using Microsoft.Win32;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
@@ -36,6 +37,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             get => _selectedRulebook;
             set => SetProperty(ref _selectedRulebook, value);
         }
+
+        // === Printing ===
+        private string? _templatePdfPath;
+        public ICommand ExportPdfCommand { get; }
 
         // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
         private RoutineType _selectedRoutine = RoutineType.Balans;
@@ -230,6 +235,11 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             OpenSlotCommand = new RelayCommand(OpenSlot);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
 
+            //Printing
+            OpenSlotCommand = new RelayCommand(OpenSlot);
+            ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
+            ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
+
             SeedSlots();
             FormData.Discipline = SelectedRoutine.ToString();
         }
@@ -297,6 +307,83 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             slot.Rulebook = chosen.Rulebook;
             slot.Category = chosen.Category;
         }
+
+        private void ExportFilledPdf()
+        {
+            try
+            {
+                if (!EnsureTemplatePdfPath())
+                    return;
+
+                var suggestedBaseName = BuildSafeFileName(
+                    string.IsNullOrWhiteSpace(FormData.EventName)
+                        ? "sutazny_plan"
+                        : FormData.EventName);
+
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "Uložiť vyplnený PDF plán",
+                    Filter = "PDF súbor (*.pdf)|*.pdf",
+                    DefaultExt = ".pdf",
+                    AddExtension = true,
+                    FileName = $"{suggestedBaseName}_{DateTime.Now:yyyy-MM-dd}.pdf"
+                };
+
+                if (saveDialog.ShowDialog() != true)
+                    return;
+
+                TrainingPlanPdfIText.ExportFromFormData(
+                    _templatePdfPath!,
+                    saveDialog.FileName,
+                    FormData,
+                    new CultureInfo("sk-SK"));
+
+                MessageBox.Show(
+                    $"PDF bolo úspešne vytvorené:\n{saveDialog.FileName}",
+                    "Export hotový",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Nepodarilo sa vytvoriť PDF.\n\n{ex.Message}",
+                    "Chyba pri exporte",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private bool EnsureTemplatePdfPath()
+        {
+            if (!string.IsNullOrWhiteSpace(_templatePdfPath) && File.Exists(_templatePdfPath))
+                return true;
+
+            var openDialog = new OpenFileDialog
+            {
+                Title = "Vyber PDF šablónu",
+                Filter = "PDF súbor (*.pdf)|*.pdf",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            if (openDialog.ShowDialog() != true)
+                return false;
+
+            _templatePdfPath = openDialog.FileName;
+            return true;
+        }
+
+        private static string BuildSafeFileName(string name)
+        {
+            var result = name.Trim();
+
+            foreach (var ch in Path.GetInvalidFileNameChars())
+                result = result.Replace(ch, '_');
+
+            return string.IsNullOrWhiteSpace(result) ? "sutazny_plan" : result;
+        }
+
 
         private static ImageSource? LoadPackImage(string packUri)
         {

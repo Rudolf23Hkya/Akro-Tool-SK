@@ -117,7 +117,7 @@
                                         Background="White"
                                         BorderBrush="Black"
                                         BorderThickness="0,1,0,0">
-                                    <TextBlock Text="{Binding Title}"
+                                    <TextBlock Text="{Binding Label}"
                                                FontSize="16"
                                                FontWeight="SemiBold"
                                                HorizontalAlignment="Center"
@@ -155,6 +155,7 @@
                 <MenuItem Header="Súbor">
                     <MenuItem Header="Upraviť názov podujatia..." Click="EditEventName_Click"/>
                     <MenuItem Header="Upraviť trénera a klub..." Click="EditTrainerClub_Click"/>
+                    <MenuItem Header="Exportovať PDF..." Command="{Binding ExportPdfCommand}"/>
                     <Separator/>
                     <MenuItem Header="Koniec" Command="{Binding ExitCommand}"/>
                 </MenuItem>
