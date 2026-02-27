@@ -27,6 +27,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private readonly ExerciseImageRepository _repo;
         public TrainingPlanFormData FormData { get; } = new();
 
+        private bool HasAnySelectedExercise()
+            => ExerciseSlots.Any(s => !string.IsNullOrWhiteSpace(s.ImagePath));
+
         // === Rulebook (age category) ===
         public ObservableCollection<Rulebook> Rulebooks { get; } =
             new(Enum.GetValues(typeof(Rulebook)).Cast<Rulebook>());
@@ -39,6 +42,34 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             {
                 if (!SetProperty(ref _selectedRulebook, value)) return;
                 UpdatePdfCategoryFields();
+                ClearExerciseSelections();
+            }
+        }
+        private void ClearExerciseSelections()
+        {
+            if (HasAnySelectedExercise())
+            {
+                var result = MessageBox.Show(
+                    "Zmena kategórie alebo vekovej skupiny vymaže všetkých 12 zvolených cvikov. Pokračovať?",
+                    "Potvrdenie zmeny",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
+            for (int i = 0; i < ExerciseSlots.Count; i++)
+            {
+                var slot = ExerciseSlots[i];
+                FormData.ClearSlot(i);
+                slot.Image = _placeholderImage;
+                slot.ImagePath = null;
+                slot.X = 0;
+                slot.Y = 0;
+                slot.Rulebook = default;
+                slot.Category = default;
+                slot.Label = $"Okno {i + 1}";
             }
         }
 
@@ -81,6 +112,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(IsMG));
 
                 UpdatePdfCategoryFields();
+                ClearExerciseSelections();
             }
         }
 
