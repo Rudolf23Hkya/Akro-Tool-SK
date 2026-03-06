@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{Binding WindowTitle}"
         Width="1250" Height="850"
+        MinWidth="1050" MinHeight="700"
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResize"
         Background="White"
