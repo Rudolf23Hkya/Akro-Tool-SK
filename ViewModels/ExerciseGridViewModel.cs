@@ -14,8 +14,11 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private readonly ExerciseImageRepository _repo;
         private readonly ImageSource? _placeholder;
 
+        private readonly bool _lockTableToggle;
+        public bool CanToggleIndividual => !_lockTableToggle;
+
         public Rulebook Rulebook { get; }
-        public Category Category { get; }
+        public Category Category { get; private set; }
         public int SlotIndex { get; }
 
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
@@ -30,6 +33,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             get => _showIndividualTable;
             set
             {
+                if (_lockTableToggle && value != _showIndividualTable)
+                    return;
+
                 if (SetProperty(ref _showIndividualTable, value))
                 {
                     OnPropertyChanged(nameof(VisibleExercises));
@@ -38,9 +44,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 }
             }
         }
-
-        public bool CanToggleIndividual
-            => Category != Atletika_SutaznyPlan_Generator.Models.Category.Inv;
 
         public string ToggleText
             => ShowIndividualTable
@@ -60,13 +63,18 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             Rulebook rulebook,
             Category category,
             int slotIndex,
-            ImageSource? placeholder)
+            ImageSource? placeholder,
+            bool startWithIndividualTable = false,
+            bool lockTableToggle = false)
         {
             _repo = repo;
             Rulebook = rulebook;
             Category = category;
             SlotIndex = slotIndex;
             _placeholder = placeholder;
+            _lockTableToggle = lockTableToggle;
+
+            _showIndividualTable = startWithIndividualTable;
 
             ExerciseClickedCommand = new RelayCommand(ExerciseClicked);
 

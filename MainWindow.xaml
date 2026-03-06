@@ -200,7 +200,7 @@
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center">
                             <Run Text="Obť.: "/>
-                            <Run Text="{Binding Obtaznost, StringFormat={}{0:0.0}}"/>
+                            <Run Text="{Binding Obtaznost, StringFormat={}{0:0.00}}"/>
                         </TextBlock>
                     </Border>
 
