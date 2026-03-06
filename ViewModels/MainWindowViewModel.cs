@@ -385,7 +385,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (chosen?.ImagePath is null)
                 return;
 
-            // Update backend form data + UI tile
             FormData.SetSlot(
                 slot.SlotIndex,
                 chosen.Rulebook,
@@ -400,6 +399,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             slot.Y = chosen.Y;
             slot.Rulebook = chosen.Rulebook;
             slot.Category = chosen.Category;
+            slot.Label = BuildSlotLabel(slot.SlotIndex);
         }
 
         private void ExportFilledPdf()
@@ -524,6 +524,21 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             // fallback (repo will just index nothing)
             return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
+        private string BuildSlotLabel(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= ExerciseSlots.Count || FormData.Slots[slotIndex] is null)
+                return $"Okno {slotIndex + 1}";
+
+            var difficulty = FormData.GetSlotDifficulty(slotIndex).ToString("0.000", CultureInfo.InvariantCulture);
+            var exerciseId = FormData.GetSlotExerciseId(slotIndex);
+            var sourceCategory = ExerciseSlots[slotIndex].Category;
+
+            if (sourceCategory == Category.Inv && exerciseId.Length > 3)
+                exerciseId = exerciseId.Substring(3);
+
+            return $"{difficulty} - {exerciseId} - {sourceCategory}";
         }
     }
 }

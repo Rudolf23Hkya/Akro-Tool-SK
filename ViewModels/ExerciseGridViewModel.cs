@@ -1,9 +1,11 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Atletika_SutaznyPlan_Generator.Models;
+using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
@@ -91,16 +93,18 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             {
                 var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
 
-                target.Add(new ExerciseCardVm
+                var card = new ExerciseCardVm
                 {
-                    Label = $"{cell.Col:00}-{cell.Row:00}",
                     Image = img,
                     ImagePath = cell.ImagePath,
                     X = cell.Col,
                     Y = cell.Row,
                     Rulebook = cell.Rulebook,
                     Category = cell.Category
-                });
+                };
+
+                card.Label = BuildExerciseGridLabel(card);
+                target.Add(card);
             }
         }
 
@@ -117,6 +121,26 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             ExerciseSelected?.Invoke(ex);
             RequestClose?.Invoke();
+        }
+
+        private decimal GetExerciseDifficulty(int rowY, int colX)
+        {
+            return colX * 0.01m;
+        }
+
+        private string BuildExerciseGridLabel(ExerciseCardVm card)
+        {
+            var difficulty = GetExerciseDifficulty(card.Y, card.X)
+                .ToString("0.000", CultureInfo.InvariantCulture);
+
+            var exerciseId = card.Category == Category.Inv
+                ? $"InvR{card.Y}"
+                : $"R{card.Y}";
+
+            if (card.Category == Category.Inv && exerciseId.StartsWith("Inv"))
+                exerciseId = exerciseId[3..];
+
+            return $"{exerciseId} - {difficulty}";
         }
     }
 }
