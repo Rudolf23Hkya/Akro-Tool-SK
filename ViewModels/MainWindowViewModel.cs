@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -358,21 +357,29 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (parameter is not ExerciseCardVm slot)
                 return;
 
-            var otherCategoryCount = CountOtherCategoryExercisesExcludingSlot(slot.SlotIndex);
+            var blockedInvRows = GetBlockedInvRowsExcludingSlot(slot.SlotIndex);
+            var blockedOtherRows = GetBlockedOtherCategoryRowsExcludingSlot(slot.SlotIndex);
+
             var invCategoryCount = CountInvExercisesExcludingSlot(slot.SlotIndex);
+            var otherCategoryCount = CountOtherCategoryExercisesExcludingSlot(slot.SlotIndex);
+
+            var isUnsetSlot = string.IsNullOrWhiteSpace(slot.ImagePath);
 
             bool forceIndividualTable = false;
             bool lockTableToggle = false;
 
-            if (otherCategoryCount >= 6 && invCategoryCount < 6)
+            if (isUnsetSlot)
             {
-                forceIndividualTable = true;
-                lockTableToggle = true;
-            }
-            else if (invCategoryCount >= 6 && otherCategoryCount < 6)
-            {
-                forceIndividualTable = false;
-                lockTableToggle = true;
+                if (otherCategoryCount >= 6 && invCategoryCount < 6)
+                {
+                    forceIndividualTable = true;
+                    lockTableToggle = true;
+                }
+                else if (invCategoryCount >= 6 && otherCategoryCount < 6)
+                {
+                    forceIndividualTable = false;
+                    lockTableToggle = true;
+                }
             }
 
             var gridVm = new ExerciseGridViewModel(
@@ -381,6 +388,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 SelectedBackendCategory,
                 slot.SlotIndex,
                 _placeholderImage,
+                blockedInvRows,
+                blockedOtherRows,
                 startWithIndividualTable: forceIndividualTable,
                 lockTableToggle: lockTableToggle);
 
@@ -606,6 +615,28 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 s.SlotIndex != slotIndex &&
                 !string.IsNullOrWhiteSpace(s.ImagePath) &&
                 s.Category != Category.Inv);
+        }
+
+        private HashSet<int> GetBlockedInvRowsExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots
+                .Where(s =>
+                    s.SlotIndex != slotIndex &&
+                    !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                    s.Category == Category.Inv)
+                .Select(s => s.Y)
+                .ToHashSet();
+        }
+
+        private HashSet<int> GetBlockedOtherCategoryRowsExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots
+                .Where(s =>
+                    s.SlotIndex != slotIndex &&
+                    !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                    s.Category != Category.Inv)
+                .Select(s => s.Y)
+                .ToHashSet();
         }
     }
 }

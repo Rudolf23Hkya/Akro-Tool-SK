@@ -5,7 +5,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Atletika_SutaznyPlan_Generator.Models;
-using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
@@ -14,12 +15,15 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private readonly ExerciseImageRepository _repo;
         private readonly ImageSource? _placeholder;
 
-        private readonly bool _lockTableToggle;
-        public bool CanToggleIndividual => !_lockTableToggle;
-
         public Rulebook Rulebook { get; }
         public Category Category { get; private set; }
         public int SlotIndex { get; }
+
+        private readonly HashSet<int> _blockedInvRows;
+        private readonly HashSet<int> _blockedOtherRows;
+        private readonly bool _lockTableToggle;
+
+        public bool CanToggleIndividual => !_lockTableToggle;
 
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
         public ObservableCollection<ExerciseCardVm> IndividualExercises { get; } = new();
@@ -64,6 +68,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             Category category,
             int slotIndex,
             ImageSource? placeholder,
+            IEnumerable<int>? blockedInvRows = null,
+            IEnumerable<int>? blockedOtherRows = null,
             bool startWithIndividualTable = false,
             bool lockTableToggle = false)
         {
@@ -72,6 +78,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             Category = category;
             SlotIndex = slotIndex;
             _placeholder = placeholder;
+            _blockedInvRows = blockedInvRows?.ToHashSet() ?? new HashSet<int>();
+            _blockedOtherRows = blockedOtherRows?.ToHashSet() ?? new HashSet<int>();
             _lockTableToggle = lockTableToggle;
 
             _showIndividualTable = startWithIndividualTable;
@@ -91,15 +99,19 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             OnPropertyChanged(nameof(ToggleText));
         }
 
-        private void LoadTableInto(ObservableCollection<ExerciseCardVm> target, Atletika_SutaznyPlan_Generator.Models.Category category)
+        private void LoadTableInto(ObservableCollection<ExerciseCardVm> target, Category category)
         {
             target.Clear();
 
             var cells = _repo.GetTable(Rulebook, category, rows: 6, cols: 5);
+            var blockedRowsForThisTable = category == Category.Inv
+                ? _blockedInvRows
+                : _blockedOtherRows;
 
             foreach (var cell in cells)
             {
                 var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
+                var isBlocked = blockedRowsForThisTable.Contains(cell.Row);
 
                 var card = new ExerciseCardVm
                 {
@@ -108,7 +120,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     X = cell.Col,
                     Y = cell.Row,
                     Rulebook = cell.Rulebook,
-                    Category = cell.Category
+                    Category = cell.Category,
+                    IsSelectable = !isBlocked,
+                    IsBlockedByRowRule = isBlocked
                 };
 
                 card.Label = BuildExerciseGridLabel(card);
@@ -119,6 +133,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private void ExerciseClicked(object? parameter)
         {
             if (parameter is not ExerciseCardVm ex)
+                return;
+
+            if (!ex.IsSelectable)
                 return;
 
             if (string.IsNullOrWhiteSpace(ex.ImagePath))
