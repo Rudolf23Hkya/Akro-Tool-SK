@@ -15,7 +15,7 @@
     <Window.DataContext>
         <vm:MainWindowViewModel/>
     </Window.DataContext>
-    
+
     <Window.Resources>
         <conv:RulebookToSlovakLabelConverter x:Key="RulebookToSlovakLabelConverter" />
     </Window.Resources>
@@ -84,7 +84,7 @@
                         VerticalAlignment="Top"
                         Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                         CommandParameter="{Binding}">
-                    <Border CornerRadius="8"
+                        <Border CornerRadius="8"
                             BorderBrush="Black"
                             BorderThickness="1"
                             SnapsToDevicePixels="True">
@@ -108,10 +108,10 @@
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                        RenderTransformOrigin="0.5,0.5">
-                                    <Image.RenderTransform>
-                                        <ScaleTransform ScaleX="0.75" ScaleY="0.75"/>
-                                    </Image.RenderTransform>
-                                </Image>
+                                        <Image.RenderTransform>
+                                            <ScaleTransform ScaleX="0.75" ScaleY="0.75"/>
+                                        </Image.RenderTransform>
+                                    </Image>
                                 </Border>
 
                                 <!-- Bottom label strip -->
@@ -142,7 +142,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="34"/>
                 <!-- menu -->
-                <RowDefinition Height="175"/>
+                <RowDefinition Height="Auto"/>
                 <!-- top controls -->
                 <RowDefinition Height="Auto"/>
                 <!-- thick separator (now uniform) -->
@@ -165,16 +165,68 @@
 
             <!-- ===================== Top controls ===================== -->
             <Grid Grid.Row="1" Margin="14,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="360"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
+                <StackPanel Grid.Row="0"
+                            Grid.ColumnSpan="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Top"
+                            Margin="0,0,0,10">
+                    <Button Content="Tlačiť"
+                            Command="{Binding ExportPdfCommand}"
+                            Height="31"
+                            Padding="13,4"
+                            Margin="0,0,7,0"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Background="White"
+                            BorderBrush="Black"
+                            BorderThickness="2"
+                            Cursor="Hand"/>
+
+                    <Border Background="White"
+                            BorderBrush="Black"
+                            BorderThickness="2"
+                            Padding="13,6"
+                            Margin="0,0,7,0">
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center">
+                            <Run Text="Obť.: "/>
+                            <Run Text="{Binding Obtaznost, StringFormat={}{0:0.0}}"/>
+                        </TextBlock>
+                    </Border>
+
+                    <Border Background="White"
+                            BorderBrush="Black"
+                            BorderThickness="2"
+                            Padding="13,6">
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center">
+                            <Run Text="{Binding OtherCatLabel}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding OtherCatCount}"/>
+                            <Run Text="/6   Inv: "/>
+                            <Run Text="{Binding InvCount}"/>
+                            <Run Text="/6"/>
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+
                 <!-- Left block: Category + Discipline -->
-                <Grid Grid.Column="0">
+                <Grid Grid.Row="1" Grid.Column="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
@@ -234,7 +286,7 @@
                 </Grid>
 
                 <!-- Right block: 4 athlete cards -->
-                <Grid Grid.Column="1" Margin="24,0,0,0">
+                <Grid Grid.Row="1" Grid.Column="1" Margin="24,0,0,0">
                     <Grid.Resources>
                         <Style x:Key="PersonCardStyle" TargetType="Border">
                             <Setter Property="CornerRadius" Value="6"/>
@@ -258,7 +310,7 @@
                         </Style>
                     </Grid.Resources>
 
-                    <UniformGrid Columns="4" VerticalAlignment="Top">
+                    <UniformGrid Columns="4" VerticalAlignment="Center">
                         <Border Style="{StaticResource PersonCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Top" FontWeight="SemiBold" Margin="0,0,0,4"/>
@@ -320,7 +372,7 @@
                                     Cursor="Hand"
                                     Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}">
-                                <Border CornerRadius="6"
+                                    <Border CornerRadius="6"
                                 BorderBrush="Black"
                                 BorderThickness="1"
                                 SnapsToDevicePixels="True">

@@ -98,13 +98,16 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public bool IsBalans { get => SelectedRoutine == RoutineType.Balans; set { if (value) SelectedRoutine = RoutineType.Balans; } }
 
         // === Backend Category selection (ONE shared selection across WP/MP/MxP/WG/MG) ===
-        private Category _selectedBackendCategory = Category.MxP;
+        private Category _selectedBackendCategory = Category.WP;
         public Category SelectedBackendCategory
         {
             get => _selectedBackendCategory;
             set
             {
                 if (!SetProperty(ref _selectedBackendCategory, value)) return;
+
+                OtherCatLabel = value.ToString();
+
                 OnPropertyChanged(nameof(IsWP));
                 OnPropertyChanged(nameof(IsMP));
                 OnPropertyChanged(nameof(IsMxP));
@@ -273,6 +276,48 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         // === Commands ===
         public ICommand OpenSlotCommand { get; }
         public ICommand ExitCommand { get; }
+
+
+        // === Summary info row ===
+        private decimal _obtaznost = 0.00m;
+        public decimal Obtaznost
+        {
+            get => _obtaznost;
+            set
+            {
+                if (!SetProperty(ref _obtaznost, value)) return;
+            }
+        }
+
+        private int _otherCatCount = 0;
+        public int OtherCatCount
+        {
+            get => _otherCatCount;
+            set
+            {
+                if (!SetProperty(ref _otherCatCount, value)) return;
+            }
+        }
+
+        private string _otherCatLabel = Category.WP.ToString();
+        public string OtherCatLabel
+        {
+            get => _otherCatLabel;
+            set
+            {
+                if (!SetProperty(ref _otherCatLabel, value)) return;
+            }
+        }
+
+        private int _invCount = 0;
+        public int InvCount
+        {
+            get => _invCount;
+            set
+            {
+                if (!SetProperty(ref _invCount, value)) return;
+            }
+        }
 
         public MainWindowViewModel()
         {
