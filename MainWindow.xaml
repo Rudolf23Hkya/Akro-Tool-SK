@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Atletika_SutaznyPlan_Generator.Converters"
         xmlns:vm="clr-namespace:Atletika_SutaznyPlan_Generator.ViewModels"
-        Title="AkroBatika Printer"
+        Title="Akro Tool SK"
         Width="1300" Height="850"
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResize"
@@ -207,8 +207,8 @@
 
                             <StackPanel Grid.Column="0">
                                 <RadioButton Content="Combi"  Margin="0,6,0,0" IsChecked="{Binding IsCombi}"/>
-                                <RadioButton Content="Tempo"  Margin="0,6,0,0" IsChecked="{Binding IsTempo}"/>
-                                <RadioButton Content="Balans" Margin="0,6,0,0" IsChecked="{Binding IsBalans}"/>
+                                <RadioButton Content="Dynamic"  Margin="0,6,0,0" IsChecked="{Binding IsTempo}"/>
+                                <RadioButton Content="Balance" Margin="0,6,0,0" IsChecked="{Binding IsBalans}"/>
                             </StackPanel>
 
                             <!-- Separator (soft + rounded) -->
@@ -251,6 +251,8 @@
 
                         <Style x:Key="DateStyle" TargetType="DatePicker">
                             <Setter Property="Height" Value="28"/>
+                            <Setter Property="Margin" Value="0,6,0,8"/>
+                            <Setter Property="Padding" Value="6,3"/>
                         </Style>
                     </Grid.Resources>
 
