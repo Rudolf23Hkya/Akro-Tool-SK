@@ -1,0 +1,13 @@
+This application includes third-party components:
+
+1. iText Community
+   License: GNU Affero General Public License v3
+   Copyright: iText Group NV and contributors
+   Notes: This application uses iText Community under the AGPL.
+   Source code for this application is available at:
+   https://your-repo.example
+
+2. Noto Sans
+   License: SIL Open Font License 1.1
+   Copyright: The Noto Project Authors
+   Notes: The full OFL license text is included in LICENSES/OFL-1.1.txt
