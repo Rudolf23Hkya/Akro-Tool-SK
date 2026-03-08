@@ -190,6 +190,17 @@
                             BorderBrush="Black"
                             BorderThickness="2"
                             Cursor="Hand"/>
+                    <Button Content="Vyčistiť tabuľku"
+                            Command="{Binding ClearTableCommand}"
+                            Height="31"
+                            Padding="13,4"
+                            Margin="0,0,7,0"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Background="White"
+                            BorderBrush="Black"
+                            BorderThickness="2"
+                            Cursor="Hand"/>
 
                     <Border Background="White"
                             BorderBrush="Black"

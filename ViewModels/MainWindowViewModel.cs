@@ -76,6 +76,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // === Printing ===
         public ICommand ExportPdfCommand { get; }
+        public ICommand ClearTableCommand { get; }
 
         // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
         private RoutineType _selectedRoutine = RoutineType.Balans;
@@ -330,6 +331,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             OpenSlotCommand = new RelayCommand(OpenSlot);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
+            ClearTableCommand = new RelayCommand(() => ClearExerciseSelections());
 
             SeedSlots();
             RecalculateExerciseSummary();
