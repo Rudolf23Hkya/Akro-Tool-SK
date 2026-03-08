@@ -22,6 +22,20 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             set => SetProperty(ref _label, value);
         }
 
+        private bool _isSelectable = true;
+        public bool IsSelectable
+        {
+            get => _isSelectable;
+            set => SetProperty(ref _isSelectable, value);
+        }
+
+        private bool _isBlockedByRowRule;
+        public bool IsBlockedByRowRule
+        {
+            get => _isBlockedByRowRule;
+            set => SetProperty(ref _isBlockedByRowRule, value);
+        }
+
         // ===== Backend metadata for a selected exercise cell =====
         public string? ImagePath { get; set; } // absolute path from ExerciseImageRepository
         public int X { get; set; }             // 1..5 (column)

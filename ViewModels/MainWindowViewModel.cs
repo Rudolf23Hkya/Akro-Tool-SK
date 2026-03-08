@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -71,10 +70,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 slot.Category = default;
                 slot.Label = $"Okno {i + 1}";
             }
+
+            RecalculateExerciseSummary();
         }
 
         // === Printing ===
         public ICommand ExportPdfCommand { get; }
+        public ICommand ClearTableCommand { get; }
 
         // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
         private RoutineType _selectedRoutine = RoutineType.Balans;
@@ -98,13 +100,16 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public bool IsBalans { get => SelectedRoutine == RoutineType.Balans; set { if (value) SelectedRoutine = RoutineType.Balans; } }
 
         // === Backend Category selection (ONE shared selection across WP/MP/MxP/WG/MG) ===
-        private Category _selectedBackendCategory = Category.MxP;
+        private Category _selectedBackendCategory = Category.WP;
         public Category SelectedBackendCategory
         {
             get => _selectedBackendCategory;
             set
             {
                 if (!SetProperty(ref _selectedBackendCategory, value)) return;
+
+                OtherCatLabel = value.ToString();
+
                 OnPropertyChanged(nameof(IsWP));
                 OnPropertyChanged(nameof(IsMP));
                 OnPropertyChanged(nameof(IsMxP));
@@ -274,21 +279,63 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public ICommand OpenSlotCommand { get; }
         public ICommand ExitCommand { get; }
 
+
+        // === Summary info row ===
+        private decimal _obtaznost = 0.00m;
+        public decimal Obtaznost
+        {
+            get => _obtaznost;
+            set
+            {
+                if (!SetProperty(ref _obtaznost, value)) return;
+            }
+        }
+
+        private int _otherCatCount = 0;
+        public int OtherCatCount
+        {
+            get => _otherCatCount;
+            set
+            {
+                if (!SetProperty(ref _otherCatCount, value)) return;
+            }
+        }
+
+        private string _otherCatLabel = Category.WP.ToString();
+        public string OtherCatLabel
+        {
+            get => _otherCatLabel;
+            set
+            {
+                if (!SetProperty(ref _otherCatLabel, value)) return;
+            }
+        }
+
+        private int _invCount = 0;
+        public int InvCount
+        {
+            get => _invCount;
+            set
+            {
+                if (!SetProperty(ref _invCount, value)) return;
+            }
+        }
+
         public MainWindowViewModel()
         {
             // Locate DB root (must contain do10_db / do14_db)
             var dbRoot = ResolveDbRoot();
             _repo = new ExerciseImageRepository(dbRoot);
 
-            OpenSlotCommand = new RelayCommand(OpenSlot);
-            ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
-
             //Printing
             OpenSlotCommand = new RelayCommand(OpenSlot);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
+            ClearTableCommand = new RelayCommand(() => ClearExerciseSelections());
 
             SeedSlots();
+            RecalculateExerciseSummary();
+
             FormData.Discipline = SelectedRoutine.ToString();
             UpdatePdfCategoryFields();
         }
@@ -312,12 +359,41 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (parameter is not ExerciseCardVm slot)
                 return;
 
+            var blockedInvRows = GetBlockedInvRowsExcludingSlot(slot.SlotIndex);
+            var blockedOtherRows = GetBlockedOtherCategoryRowsExcludingSlot(slot.SlotIndex);
+
+            var invCategoryCount = CountInvExercisesExcludingSlot(slot.SlotIndex);
+            var otherCategoryCount = CountOtherCategoryExercisesExcludingSlot(slot.SlotIndex);
+
+            var isUnsetSlot = string.IsNullOrWhiteSpace(slot.ImagePath);
+
+            bool forceIndividualTable = false;
+            bool lockTableToggle = false;
+
+            if (isUnsetSlot)
+            {
+                if (otherCategoryCount >= 6 && invCategoryCount < 6)
+                {
+                    forceIndividualTable = true;
+                    lockTableToggle = true;
+                }
+                else if (invCategoryCount >= 6 && otherCategoryCount < 6)
+                {
+                    forceIndividualTable = false;
+                    lockTableToggle = true;
+                }
+            }
+
             var gridVm = new ExerciseGridViewModel(
                 _repo,
                 SelectedRulebook,
                 SelectedBackendCategory,
                 slot.SlotIndex,
-                _placeholderImage);
+                _placeholderImage,
+                blockedInvRows,
+                blockedOtherRows,
+                startWithIndividualTable: forceIndividualTable,
+                lockTableToggle: lockTableToggle);
 
             ExerciseCardVm? chosen = null;
             gridVm.ExerciseSelected += ex => chosen = ex;
@@ -340,7 +416,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (chosen?.ImagePath is null)
                 return;
 
-            // Update backend form data + UI tile
             FormData.SetSlot(
                 slot.SlotIndex,
                 chosen.Rulebook,
@@ -355,10 +430,26 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             slot.Y = chosen.Y;
             slot.Rulebook = chosen.Rulebook;
             slot.Category = chosen.Category;
+            slot.Label = BuildSlotLabel(slot.SlotIndex);
+
+            RecalculateExerciseSummary();
         }
 
         private void ExportFilledPdf()
         {
+            var selectedExerciseCount = FormData.Slots.Count(s => s != null);
+
+            if (selectedExerciseCount < 12)
+            {
+                MessageBox.Show(
+                    "Na vytlačenie Súťažného plánu musíte zvoliť 12 cvičení.",
+                    "Chýbajúce cvičenia",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                return;
+            }
+
             try
             {
                 var templatePdfPath = GetTemplatePdfPath();
@@ -479,6 +570,75 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             // fallback (repo will just index nothing)
             return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
+        private string BuildSlotLabel(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= ExerciseSlots.Count || FormData.Slots[slotIndex] is null)
+                return $"Okno {slotIndex + 1}";
+
+            var difficulty = FormData.GetSlotDifficulty(slotIndex).ToString("0.000", CultureInfo.InvariantCulture);
+            var exerciseId = FormData.GetSlotExerciseId(slotIndex);
+            var sourceCategory = ExerciseSlots[slotIndex].Category;
+
+            if (sourceCategory == Category.Inv && exerciseId.Length > 3)
+                exerciseId = exerciseId.Substring(3);
+
+            return $"{difficulty} - {exerciseId} - {sourceCategory}";
+        }
+
+        private void RecalculateExerciseSummary()
+        {
+            InvCount = ExerciseSlots.Count(s =>
+                !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                s.Category == Category.Inv);
+
+            OtherCatCount = ExerciseSlots.Count(s =>
+                !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                s.Category != Category.Inv);
+
+            Obtaznost = FormData.Slots
+                .Where(s => s != null)
+                .Select(s => FormData.DifficultyRule(s!.Y, s!.X))
+                .Aggregate(0m, (acc, d) => acc + d);
+        }
+
+        private int CountInvExercisesExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots.Count(s =>
+                s.SlotIndex != slotIndex &&
+                !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                s.Category == Category.Inv);
+        }
+
+        private int CountOtherCategoryExercisesExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots.Count(s =>
+                s.SlotIndex != slotIndex &&
+                !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                s.Category != Category.Inv);
+        }
+
+        private HashSet<int> GetBlockedInvRowsExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots
+                .Where(s =>
+                    s.SlotIndex != slotIndex &&
+                    !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                    s.Category == Category.Inv)
+                .Select(s => s.Y)
+                .ToHashSet();
+        }
+
+        private HashSet<int> GetBlockedOtherCategoryRowsExcludingSlot(int slotIndex)
+        {
+            return ExerciseSlots
+                .Where(s =>
+                    s.SlotIndex != slotIndex &&
+                    !string.IsNullOrWhiteSpace(s.ImagePath) &&
+                    s.Category != Category.Inv)
+                .Select(s => s.Y)
+                .ToHashSet();
         }
     }
 }

@@ -5,35 +5,46 @@
         Height="170"
         Width="420"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
-    <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI">
 
-        <TextBlock Text="Zadajte názov podujatia:"
-                   FontSize="16"
-                   Margin="0,0,0,10"/>
+  <Window.Resources>
+    <Style x:Key="DialogTextBoxStyle" TargetType="TextBox">
+      <Setter Property="MinHeight" Value="30"/>
+      <Setter Property="Padding" Value="6,4,6,4"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+  </Window.Resources>
 
-        <TextBox x:Name="EventNameTextBox"
-                 Grid.Row="1"
-                 Height="30"
-                 Text="{Binding EventName, UpdateSourceTrigger=PropertyChanged}" />
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,16,0,0">
-            <Button Content="Zrušiť"
-                    Width="90"
-                    Margin="0,0,8,0"
-                    IsCancel="True"/>
-            <Button Content="OK"
-                    Width="90"
-                    IsDefault="True"
-                    Click="Ok_Click"/>
-        </StackPanel>
-    </Grid>
+    <TextBlock Text="Zadajte názov podujatia:"
+               FontSize="16"
+               Margin="0,0,0,10"/>
+
+    <TextBox x:Name="EventNameTextBox"
+             Grid.Row="1"
+             Style="{StaticResource DialogTextBoxStyle}"
+             Text="{Binding EventName, UpdateSourceTrigger=PropertyChanged}" />
+
+    <StackPanel Grid.Row="2"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,16,0,0">
+      <Button Content="Zrušiť"
+              Width="90"
+              Margin="0,0,8,0"
+              IsCancel="True"/>
+      <Button Content="OK"
+              Width="90"
+              IsDefault="True"
+              Click="Ok_Click"/>
+    </StackPanel>
+  </Grid>
 </Window>

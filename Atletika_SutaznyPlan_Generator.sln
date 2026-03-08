@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atletika_SutaznyPlan_Generator", "Atletika_SutaznyPlan_Generator.csproj", "{CA35EF12-956C-4C18-8A85-8D5401A930D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atletika.SmokeTests", "..\Atletika.SmokeTests\Atletika.SmokeTests.csproj", "{DE75A624-CFDF-4349-B38F-05326591DADF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atletika.SmokeTests", "..\Atletika.SmokeTests\Atletika.SmokeTests.csproj", "{DE75A624-CFDF-4349-B38F-05326591DADF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akro Tool SK", "Akro Tool SK.csproj", "{98A84442-BB20-4B38-835D-7C7D09897088}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,14 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CA35EF12-956C-4C18-8A85-8D5401A930D2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DE75A624-CFDF-4349-B38F-05326591DADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DE75A624-CFDF-4349-B38F-05326591DADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DE75A624-CFDF-4349-B38F-05326591DADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DE75A624-CFDF-4349-B38F-05326591DADF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98A84442-BB20-4B38-835D-7C7D09897088}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98A84442-BB20-4B38-835D-7C7D09897088}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98A84442-BB20-4B38-835D-7C7D09897088}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98A84442-BB20-4B38-835D-7C7D09897088}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -80,5 +80,22 @@ namespace Atletika_SutaznyPlan_Generator
                 vm.ClubName = dlg.ClubName?.Trim() ?? "";
             }
         }
+        private void ShowCopyright_Click(object sender, RoutedEventArgs e)
+        {
+            string copyrightText =
+                "Akro Tool SK\n" +
+                "Copyright (C) 2026 Rudolf Mohňanský\n\n" +
+                "This program is free software: you can redistribute it and/or modify it\n" +
+                "under the terms of the GNU Affero General Public License, version 3 or later.\n\n" +
+                "This program is distributed without any warranty.\n\n" +
+                "Source code: " +
+                "See COPYING for full license text.";
+
+            MessageBox.Show(
+                copyrightText,
+                "Autorské práva",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
     }
 }
