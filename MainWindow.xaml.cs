@@ -88,7 +88,7 @@ namespace Atletika_SutaznyPlan_Generator
                 "This program is free software: you can redistribute it and/or modify it\n" +
                 "under the terms of the GNU Affero General Public License, version 3 or later.\n\n" +
                 "This program is distributed without any warranty.\n\n" +
-                "Source code: " +
+                "Source code: https://github.com/Rudolf23Hkya/Akro-Tool-SK" +
                 "See COPYING for full license text.";
 
             MessageBox.Show(
