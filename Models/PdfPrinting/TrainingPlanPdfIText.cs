@@ -5,7 +5,9 @@ using System.IO;
 using System.Linq;
 using iText.Forms;
 using iText.Forms.Fields;
+using iText.IO.Font;
 using iText.IO.Image;
+using iText.Kernel.Font;
 using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
 using iText.Layout;
@@ -15,6 +17,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 {
     public static class TrainingPlanPdfIText
     {
+        private const string DefaultFontRelativePath = @"Assets\NotoSans-Bold.ttf";
+
         /// <summary>
         /// Exports a flattened PDF from the template using TrainingPlanFormData:
         /// - fills all text fields (including per-tile ExerciseDifficulity.* and ExerciseID.*)
@@ -37,17 +41,22 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Template PDF not found.", templatePath);
 
-            culture ??= CultureInfo.InvariantCulture;
+            string fontPath = ResolveFontPath(DefaultFontRelativePath);
+            if (!File.Exists(fontPath))
+                throw new FileNotFoundException("PDF font not found.", fontPath);
 
             using var pdfDoc = new PdfDocument(new PdfReader(templatePath), new PdfWriter(outputPath));
             var form = PdfAcroForm.GetAcroForm(pdfDoc, true);
+
+            // Embedded Unicode font for Slovak characters
+            PdfFont font = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
 
             // Use this Document for fixed-position image placement
             using var doc = new Document(pdfDoc);
 
             // 1) Fill TEXT fields from backend (includes per-slot ExerciseDifficulity.* and ExerciseID.*)
             var textMap = data.ToTextFieldMap(culture);
-            FillTextFields(form, textMap);
+            FillTextFields(form, textMap, font);
 
             // 2) Place IMAGES for the 12 tiles + remove their image fields so they cannot cover the images
             var imagePairs = data.ToImageFieldList(); // (Image1_af_image.N, path)
@@ -59,7 +68,6 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 var parent = form.GetField("Image1_af_image");
                 if (parent != null)
                 {
-                    // If the parent remains after children removal, remove it to keep the form clean
                     form.RemoveField("Image1_af_image");
                 }
             }
@@ -69,9 +77,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 form.FlattenFields();
         }
 
-        private static void FillTextFields(PdfAcroForm form, Dictionary<string, string> textMap)
+        private static void FillTextFields(PdfAcroForm form, Dictionary<string, string> textMap, PdfFont font)
         {
-            // Use GetAllFormFields so we can set only those that exist in the template
             var fields = form.GetAllFormFields();
 
             foreach (var kv in textMap)
@@ -79,9 +86,38 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 if (!fields.TryGetValue(kv.Key, out var field) || field == null)
                     continue;
 
-                // Most of yours are text fields; SetValue works fine here.
-                // If a field is not a text field, SetValue is still often OK (itext handles many types).
-                field.SetValue(kv.Value ?? string.Empty);
+                string value = kv.Value ?? string.Empty;
+
+                try
+                {
+                    // Preserve the field's current font size if possible.
+                    // 0 means auto-size in AcroForm DA strings, so we keep that behavior.
+                    float fontSize = GetFontSizeOrDefault(field, 0f);
+
+                    field.SetValue(value, font, fontSize);
+                    field.RegenerateField();
+                }
+                catch
+                {
+                    // Fallback: still try to set the value if the field type behaves differently.
+                    field.SetValue(value, font, 0f);
+                    field.RegenerateField();
+                }
+            }
+        }
+
+        private static float GetFontSizeOrDefault(PdfFormField field, float defaultValue)
+        {
+            try
+            {
+                // Many AcroForm text fields expose the current font size.
+                // If unavailable or invalid, use the provided default.
+                float size = field.GetFontSize();
+                return size >= 0 ? size : defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
             }
         }
 
@@ -128,6 +164,12 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 if (removeImageFields)
                     form.RemoveField(fieldName);
             }
+        }
+
+        private static string ResolveFontPath(string relativePath)
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            return System.IO.Path.Combine(baseDir, relativePath);
         }
 
         // Utility: print all fields (helps confirm field names)
