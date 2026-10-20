@@ -33,15 +33,20 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | Deployment | ClickOnce offline (`<Install>true</Install>`, `<CreateDesktopShortcut>true</CreateDesktopShortcut>`), icon `assets\AkroTool_Icon.ico` |
 | Distribution | Pre-built download linked in `README.txt` (Google Drive) |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
-| Tests | None in this repo. The `.sln` references `..\Atletika.SmokeTests\Atletika.SmokeTests.csproj`, a console test app that lives **outside** the repo (not committed). |
+| Tests | None. (An old external `Atletika.SmokeTests` console app was only used for beta experiments; its sln reference was removed.) |
 
 Build (Windows, normal dev): open the `.sln` in Visual Studio 2022, or `dotnet build "Akro Tool SK.csproj"`.
-Build the **csproj, not the sln**, from the command line — the sln points to the missing SmokeTests project.
 
-Building in a Linux/cloud container: no .NET SDK is pre-installed. WPF can still be *compiled* (not run) on Linux with
-`dotnet build "Akro Tool SK.csproj" -p:EnableWindowsTargeting=true` after installing the .NET 8 SDK
-(e.g. via the `dotnet-install.sh` script). The app itself can only be run/tested on Windows — say so instead of
-claiming a UI change was verified.
+Building in a Linux/cloud container: no .NET SDK is pre-installed. WPF **compiles** (cannot run) on Linux:
+```bash
+curl -sSL -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh
+bash dotnet-install.sh --channel 8.0 --install-dir <scratch>/dotnet
+<scratch>/dotnet/dotnet build "Akro Tool SK.csproj" -p:EnableWindowsTargeting=true \
+    -p:CreateHardLinksForCopyFilesToOutputDirectoryIfPossible=true   # hard links: DataBase is ~684 MB
+rm -rf bin obj   # afterwards
+```
+This compiles cleanly with 0 warnings — keep it that way, and run it before every push.
+The app itself can only be run/tested on Windows — say so instead of claiming a UI change was verified.
 
 Files copied to the output folder (all resolved relative to `AppDomain.CurrentDomain.BaseDirectory` at runtime):
 - `Cvicebny-plan_Template.pdf` (Content, PreserveNewest)
@@ -54,7 +59,7 @@ Line endings: repo stores LF (`.gitattributes: * text=auto`), Windows checkouts 
 ## 3. Repository layout
 
 ```
-App.xaml / App.xaml.cs            Application entry (StartupUri=MainWindow.xaml) — see "Known quirks" #1
+App.xaml / App.xaml.cs            Application entry (StartupUri=MainWindow.xaml); OnStartup sets up wpf-binding-errors.log
 AssemblyInfo.cs                   WPF ThemeInfo boilerplate
 MainWindow.xaml(.cs)              Main screen; code-behind only opens dialogs + copyright box
 ExerciseGridWindow.xaml(.cs)      Pop-up exercise picker (6x5 grid + Inv toggle)
@@ -101,7 +106,7 @@ MainWindow.xaml ──DataContext (created in XAML)──> MainWindowViewModel
 - **Two parallel representations of the 12 slots** must stay in sync:
   `FormData` (`ExerciseSlotSelection?[12]` via `SetSlot`/`ClearSlot`) is what gets printed;
   `ExerciseSlots` (`ExerciseCardVm`) is what's shown. `OpenSlot` and `ClearExerciseSelections` update both.
-  Any new feature that changes a slot (e.g. remove-on-right-click) must update both and call `RecalculateExerciseSummary()`.
+  Any new feature that changes a slot must update both and call `RecalculateExerciseSummary()`.
 - View-model properties for header/athlete fields are thin wrappers that write straight into `FormData`.
   Birth dates: UI uses `DateTime?` (DatePicker), backend stores `string` `"d.M.yyyy"` (sk-SK) — see `ParseDob`/`FormatDob`.
 - The VM shows `MessageBox` directly (confirmation on clearing, export errors). There is no dialog service; follow that style.
@@ -115,7 +120,7 @@ DataBase/
   do14_db/   (Rulebook.DO_14_ROK, file prefix "14r")
     wp/ mp/ m_x_p/ wg/ mg/ inv/        (CategoryMap.FolderName)
       <prefix>_<cat>_<COL>_<ROW>.png   e.g. 10r_mp_03_02.png = column 3, row 2
-      input_4_crop/                    original uncropped source images (NOT indexed, but copied to output!)
+          input_4_crop/                    original uncropped source images (NOT indexed; kept on purpose, see below)
   AutoCrop_TableBar_Resize_v4_Dialog.jsx   Photoshop batch script used to crop input_4_crop -> final PNGs
 ```
 
@@ -127,6 +132,8 @@ DataBase/
 - DB root is located by `MainWindowViewModel.ResolveDbRoot()`: walks up to 8 parents from the exe dir looking for
   `DataBase|Database|database` containing `do10_db` or `do14_db`. If not found → empty index (all tiles show placeholder).
 - Grid coordinates throughout the code: **X = column (1..5), Y = row (1..6)**. `TrainingPlanFormData.SetSlot` validates these ranges.
+- The repo intentionally holds the **full** picture DB including `input_4_crop/` sources and the `.jsx` script —
+  it's public SGF material, and the repo is not the install folder. Don't remove them or exclude them "to save space".
 - Adding a new rulebook = new enum value + `RulebookFolder`/`RulebookPrefix`/`ToSlovakLabel` cases + `TryParseImageFileName` + DB folder.
 
 ## 6. Domain rules (implemented)
@@ -147,6 +154,8 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
 
+The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner — don't change it.
+
 Team size text printed from category: WP/MP/MxP → `DUO`, WG → `TRIO`, MG → `QUARTET`, Inv → `SOLO` (`MapTeamSizeText`).
 
 ## 7. PDF export (`Models/PdfPrinting`)
@@ -159,13 +168,13 @@ Template `Cvicebny-plan_Template.pdf`: one landscape page. AcroForm fields (name
 | `trainer.name`, `trainer.contact` | TrainerClubDialog | |
 | `category1` | `SelectedBackendCategory.ToString()` (`WP`, `MxP`, …) | |
 | `category2` | `SelectedRulebook.ToSlovakLabel()` | |
-| `discipline` | `SelectedRoutine.ToString()` | see Known quirks #3 |
+| `discipline` | `SelectedRoutine.ToString()` | prints `Combi/Tempo/Balans` — to be fixed, see open issue #26 |
 | `teamSizeText` | `MapTeamSizeText` | |
 | `overallDifficulity` | sum of 12 difficulties, `0.000`, sk-SK (comma decimal) | |
 | `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | |
 | `Image1_af_image.0..11` | 12 slot images (button fields used only for their rectangles) | |
 | `ExerciseDifficulity.0..11`, `ExerciseID.0..11` | per slot | |
-| `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` | **never set** (props exist in FormData) | open question from issue #2 |
+| `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` | **intentionally left empty** — the coach fills them in by pen on the printed sheet (client's request). Don't fill them. | issue #2 |
 
 Spelling of field names (`Difficulity`, `invidualna`) is baked into the template — **do not "fix" the constants** unless the template is changed too.
 
@@ -179,7 +188,7 @@ Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
    center it, `SetFixedPosition` on the page, then **remove the image field** (otherwise its appearance covers the picture).
 5. Remove parent `Image1_af_image`, then `form.FlattenFields()`.
 
-`DumpFieldNames(templatePath)` is a debug helper (used by the external SmokeTests console app) to list template fields.
+`DumpFieldNames(templatePath)` is a debug helper (console output) to list template fields.
 If the template is edited in Acrobat, re-check field names with it (or `pypdf`: `PdfReader(...).get_fields()`).
 
 ## 8. UI details
@@ -199,25 +208,29 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 
 ## 9. Known quirks / tech debt (verified by reading the code — confirm with the owner before "fixing")
 
-1. **`App.xaml.cs` has no namespace**, while `App.xaml` declares `x:Class="Atletika_SutaznyPlan_Generator.App"`.
-   They compile into two different classes, so the `OnStartup` override (binding-error log `wpf-binding-errors.log`)
-   **never runs**.
-2. `Assets\NotoSans-Bold.ttf` path in `TrainingPlanPdfIText` uses capital `A` and a backslash; works only because
+1. `Assets\NotoSans-Bold.ttf` path in `TrainingPlanPdfIText` uses capital `A` and a backslash; works only because
    Windows paths are case-insensitive.
-3. Discipline radio buttons are labelled **Combi / Dynamic / Balance** (issue #10) but the enum is
-   `RoutineType { Combi, Tempo, Balans }` and `FormData.Discipline = enum.ToString()` → the PDF prints `Tempo`/`Balans`.
-4. Difficulty rule duplicated in `ExerciseGridViewModel.GetExerciseDifficulty` and `TrainingPlanFormData.DefaultDifficulty`.
+2. Discipline names are inconsistent: radio buttons say **Combi / Dynamic / Balance** (issue #10), the enum is
+   `RoutineType { Combi, Tempo, Balans }` and the PDF prints `enum.ToString()`. **Open issue #26** defines the target:
+   | UI (English) | Slovak (paper) |
+   |---|---|
+   | Combi | Zmiešaná zostava |
+   | Dynamic | Dynamická zostava |
+   | Balance | Balančná zostava (also called *statická zostava*) |
+3. Difficulty rule duplicated in `ExerciseGridViewModel.GetExerciseDifficulty` and `TrainingPlanFormData.DefaultDifficulty`.
    Number formatting differs: UI labels use InvariantCulture (`0.010`), the PDF uses sk-SK (`0,010`), the summary bar uses `0.00`.
-5. `DataBase\**\*.*` copies `input_4_crop/` folders (~36 MB) and the `.jsx` script into the build/publish output.
-6. `.sln` references the external `Atletika.SmokeTests` project that isn't in the repo.
-7. Copyright message box: missing `\n` between the source URL and "See COPYING…"; `THIRD-PARTY-NOTICES.txt` still has
+4. Copyright message box: missing `\n` between the source URL and "See COPYING…"; `THIRD-PARTY-NOTICES.txt` still has
    placeholder `https://your-repo.example` and references a non-existent `LICENSES/OFL-1.1.txt`.
-8. Footer label typo `NázovKlubu` (missing space).
-9. Unused code: `PlaceholderImagePath` const, `GetImagePathXY`, `SetSlotFromImagePath`/`TryParseImageFileName`
+5. Footer label typo `NázovKlubu` (missing space).
+6. Unused code: `PlaceholderImagePath` const, `GetImagePathXY`, `SetSlotFromImagePath`/`TryParseImageFileName`
    (kept as utilities), the two unused DataTemplates in MainWindow, `sgf_logo2.png` resource.
-10. Closed issues whose feature is **not visible in the code**: #6 default/minimum birth date (DatePickers have no
-    `DisplayDate`/`DisplayDateStart`), #23 right-click removes an exercise, #5 comment "start in fullscreen"
-    (no `WindowState="Maximized"`).
+7. `wpf-binding-errors.log` (next to the exe) is appended to on every run and never rotated.
+
+**Rejected by the client — treat as non-existent, don't implement or "restore":** #6 (default/minimum birth date),
+#23 (right-click removes an exercise), #5's comment about starting in fullscreen.
+
+Fixed: `App.xaml.cs` previously had no namespace, so its `OnStartup` (binding-error log) never ran — now in
+`Atletika_SutaznyPlan_Generator`.
 
 ## 10. Development history (from issues & commits)
 
