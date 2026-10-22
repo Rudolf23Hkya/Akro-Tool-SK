@@ -498,6 +498,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         {
             // Turning 10 during the year already means the higher category
             Rulebook.DO_10_ROK => 9,
+            // TODO: limits for all other age groups (incl. new ones from #27) — owner wants every group checked
             _ => null
         };
 

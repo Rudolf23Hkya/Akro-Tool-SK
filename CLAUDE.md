@@ -154,7 +154,7 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | Summary bar: `Obť.: <sum>` and `<Cat>: n/6   Inv: n/6` | `RecalculateExerciseSummary` | #12 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
-| **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. Other age groups are not checked yet. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
+| **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. **TODO (owner, Oct 2026): every age group must be checked** — Do 10 is the reference implementation; add the limits for all groups (incl. the new ones from #27) as the **last** step, after #27 lands. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
 
 The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner — don't change it.
 
