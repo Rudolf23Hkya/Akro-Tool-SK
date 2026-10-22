@@ -11,7 +11,7 @@ Coach workflow:
 1. On start, the app asks for the **event name**, then **trainer / contact / club** (two modal dialogs).
 2. Coach picks **age group** (rulebook: *Do 10 rokov* / *Do 14 rokov*), **discipline** (Combi / Dynamic / Balance)
    and **category** (WP, MP, MxP, WG, MG).
-3. Coach enters up to 4 athletes (Top, Middle, Middle, Base) with names and birth dates.
+3. Coach enters up to 4 athletes (Top, Middle, Middle, Base) with names and birth years.
 4. Coach clicks each of the **12 slots** ("Okno 1..12"). A pop-up grid shows the exercise pictures from the database
    (6 rows × 5 columns) for the chosen category, with a toggle to the **Individual (Inv)** table.
 5. **Tlačiť** (Print) → Save dialog → fills `Cvicebny-plan_Template.pdf` with text + the 12 pictures, flattens it.
@@ -108,7 +108,8 @@ MainWindow.xaml ──DataContext (created in XAML)──> MainWindowViewModel
   `ExerciseSlots` (`ExerciseCardVm`) is what's shown. `OpenSlot` and `ClearExerciseSelections` update both.
   Any new feature that changes a slot must update both and call `RecalculateExerciseSummary()`.
 - View-model properties for header/athlete fields are thin wrappers that write straight into `FormData`.
-  Birth dates: UI uses `DateTime?` (DatePicker), backend stores `string` `"d.M.yyyy"` (sk-SK) — see `ParseDob`/`FormatDob`.
+  Birth years: UI uses a year ComboBox (`BirthYearOptions`, empty item first so it can be cleared), backend stores the
+  year as `string` in the `Athlete*Dob` properties (issue #28).
 - The VM shows `MessageBox` directly (confirmation on clearing, export errors). There is no dialog service; follow that style.
 - Radio buttons bind to bool wrapper properties (`IsCombi`, `IsWP`, …) that set the underlying enum.
 
@@ -153,6 +154,7 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | Summary bar: `Obť.: <sum>` and `<Cat>: n/6   Inv: n/6` | `RecalculateExerciseSummary` | #12 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
+| **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. Other age groups are not checked yet. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
 
 The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner — don't change it.
 
@@ -168,10 +170,10 @@ Template `Cvicebny-plan_Template.pdf`: one landscape page. AcroForm fields (name
 | `trainer.name`, `trainer.contact` | TrainerClubDialog | |
 | `category1` | `SelectedBackendCategory.ToString()` (`WP`, `MxP`, …) | |
 | `category2` | `SelectedRulebook.ToSlovakLabel()` | |
-| `discipline` | `SelectedRoutine.ToString()` | prints `Combi/Tempo/Balans` — to be fixed, see open issue #26 |
+| `discipline` | `SelectedRoutine.ToSlovakLabel()` | e.g. `Zmiešaná zostava` (issue #26) |
 | `teamSizeText` | `MapTeamSizeText` | |
 | `overallDifficulity` | sum of 12 difficulties, `0.000`, sk-SK (comma decimal) | |
-| `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | |
+| `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | `.dateOfBirth` holds only the birth year (issue #28) |
 | `Image1_af_image.0..11` | 12 slot images (button fields used only for their rectangles) | |
 | `ExerciseDifficulity.0..11`, `ExerciseID.0..11` | per slot | |
 | `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` | **intentionally left empty** — the coach fills them in by pen on the printed sheet (client's request). Don't fill them. | issue #2 |
@@ -210,13 +212,9 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 
 1. `Assets\NotoSans-Bold.ttf` path in `TrainingPlanPdfIText` uses capital `A` and a backslash; works only because
    Windows paths are case-insensitive.
-2. Discipline names are inconsistent: radio buttons say **Combi / Dynamic / Balance** (issue #10), the enum is
-   `RoutineType { Combi, Tempo, Balans }` and the PDF prints `enum.ToString()`. **Open issue #26** defines the target:
-   | UI (English) | Slovak (paper) |
-   |---|---|
-   | Combi | Zmiešaná zostava |
-   | Dynamic | Dynamická zostava |
-   | Balance | Balančná zostava (also called *statická zostava*) |
+2. (Fixed in #26) Discipline names: enum `RoutineType { Combi, Dynamic, Balance }`; the radio buttons and the PDF both
+   show `RoutineTypeExtensions.ToSlovakLabel()` — *Zmiešaná zostava / Dynamická zostava / Balančná zostava*
+   (Balance is also called *statická zostava*).
 3. Difficulty rule duplicated in `ExerciseGridViewModel.GetExerciseDifficulty` and `TrainingPlanFormData.DefaultDifficulty`.
    Number formatting differs: UI labels use InvariantCulture (`0.010`), the PDF uses sk-SK (`0,010`), the summary bar uses `0.00`.
 4. Copyright message box: missing `\n` between the source URL and "See COPYING…"; `THIRD-PARTY-NOTICES.txt` still has
