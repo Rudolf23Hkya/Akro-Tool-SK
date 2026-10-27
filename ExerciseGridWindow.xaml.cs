@@ -7,6 +7,7 @@ namespace Atletika_SutaznyPlan_Generator
         public ExerciseGridWindow()
         {
             InitializeComponent();
+            WindowSizing.FitToWorkArea(this);
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)

@@ -55,6 +55,7 @@ The app itself can only be run/tested on Windows — say so instead of claiming 
 Files copied to the output folder (all resolved relative to `AppDomain.CurrentDomain.BaseDirectory` at runtime):
 - `Cvicebny-plan_Template.pdf` (Content, PreserveNewest)
 - `assets\NotoSans-Bold.ttf` (Content, PreserveNewest) — the PDF font
+- `COPYING.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSES\OFL-1.1.txt` (Content, PreserveNewest) — license texts (AGPL, font OFL)
 - `DataBase\**\*.*` (None, PreserveNewest, also to publish dir) — exercise images
 - `assets\sgf_logo1.png`, `sgf_logo2.png`, `AkroTool_Icon.ico` are **WPF Resources** (embedded, loaded with `pack://application:,,,/assets/...`)
 
@@ -221,7 +222,7 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 
 ## 8. UI details
 
-- **MainWindow**: 1300×850, min 1100×750. Rows: menu (Súbor: edit event name, edit trainer/club, export PDF, exit;
+- **MainWindow**: 1300×850, min 1100×750 — both shrunk to the work area at startup and centered (`WindowSizing`). Rows: menu (Súbor: edit event name, edit trainer/club, export PDF, exit;
   Pomoc: Autorské práva) → top controls (Tlačiť, Vyčistiť tabuľku, Obť. counter, category counters; rulebook ComboBox;
   Disciplína GroupBox with 2 radio groups; 4 athlete cards) → 12-slot `ItemsControl` (`UniformGrid Columns=4`) → footer
   (Tréner / Názov klubu / Podujatie).
@@ -240,19 +241,17 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 
 ## 9. Known quirks / tech debt (verified by reading the code — confirm with the owner before "fixing")
 
-1. `Assets\NotoSans-Bold.ttf` path in `TrainingPlanPdfIText` uses capital `A` and a backslash; works only because
-   Windows paths are case-insensitive.
-2. (Fixed in #26) Discipline names: enum `RoutineType { Combi, Dynamic, Balance }`; the radio buttons and the PDF both
-   show `RoutineTypeExtensions.ToSlovakLabel()` — *Zmiešaná zostava / Dynamická zostava / Balančná zostava*
-   (Balance is also called *statická zostava*).
-3. (Duplication fixed in Phase 1 — difficulty now comes only from `AgeGroups.cs`.)
-   Number formatting differs: UI labels use InvariantCulture (`0.010`), the PDF uses sk-SK (`0,010`), the summary bar uses `0.00`.
-4. Copyright message box: missing `\n` between the source URL and "See COPYING…"; `THIRD-PARTY-NOTICES.txt` still has
-   placeholder `https://your-repo.example` and references a non-existent `LICENSES/OFL-1.1.txt`.
-5. Footer label typo `NázovKlubu` (missing space).
-6. Unused code: `PlaceholderImagePath` const, `GetImagePathXY`, `SetSlotFromImagePath`/`TryParseImageFileName`
-   (kept as utilities), the two unused DataTemplates in MainWindow, `sgf_logo2.png` resource.
-7. `wpf-binding-errors.log` (next to the exe) is appended to on every run and never rotated.
+1. Number formatting differs on purpose: UI labels use InvariantCulture (`0.010`), the PDF uses sk-SK (`0,010`).
+2. `assets\sgf_logo2.png` is embedded as a Resource but not used (SGF material, kept).
+3. Confirmation boxes (`MessageBox` Yes/No) show the button texts in the **Windows language** (Hungarian on the
+   dev PC, Slovak on coaches' PCs); the custom dialogs (`AgeWarningDialog`, `SlotChangeDialog`) are always Slovak.
+
+Fixed 2026-10-28 (PR "small issues"): font path case (`assets`), copyright box line breaks, `THIRD-PARTY-NOTICES.txt`
+(real repo URL, Noto copyright) + `LICENSES/OFL-1.1.txt` added, license files copied next to the exe, footer
+"Názov klubu", unused code removed (`PlaceholderImagePath`, `GetImagePathXY`, `SetSlotFromImagePath`,
+`TryParseImageFileName`, two unused DataTemplates), binding log rotated above 1 MB, windows fit the screen's work
+area (`WindowSizing.FitToWorkArea`, for 125–150 % scaling). Earlier: discipline names (#26), duplicated difficulty
+rule (Phase 1).
 
 **Rejected by the client — treat as non-existent, don't implement or "restore":** #6 (default/minimum birth date),
 #23 (right-click removes an exercise), #5's comment about starting in fullscreen.

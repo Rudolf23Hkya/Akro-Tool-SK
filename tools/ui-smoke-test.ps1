@@ -209,12 +209,27 @@ try {
             $save = WaitFor { FindWindowByTitle 'Uložiť vyplnený PDF plán' } 'save dialog'
         }
         else { "no age warning" }
-        # The common file dialog's name box is not reachable through UI Automation from here,
-        # but it has keyboard focus when the dialog opens: activate the dialog, type the full path and press Enter.
+        # The common file dialog is not fully visible under the WPF window in UI Automation, but it is when
+        # opened by its window handle: 1001 = file name box, 1 = Save. Fallback: type the path + Enter.
         Start-Sleep -Milliseconds 1500
         $hwnd = [SmokeWin32]::FindWindow([NullString]::Value, 'Uložiť vyplnený PDF plán')
-        if ($hwnd -ne [IntPtr]::Zero) { [SmokeWin32]::SetForegroundWindow($hwnd) | Out-Null; Start-Sleep -Milliseconds 300 }
-        [System.Windows.Forms.SendKeys]::SendWait(($pdf -replace '([+^%~(){}\[\]])', '{$1}') + '{ENTER}')
+        $nameBox = $null; $saveButton = $null
+        if ($hwnd -ne [IntPtr]::Zero) {
+            $dlg = $AE::FromHandle($hwnd)
+            $byId = { param($id, $type) $dlg.FindFirst($TS::Descendants, (New-Object System.Windows.Automation.AndCondition(
+                (New-Object System.Windows.Automation.PropertyCondition($AE::AutomationIdProperty, $id)),
+                (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $type))))) }
+            $nameBox = & $byId '1001' $CT::Edit
+            $saveButton = & $byId '1' $CT::Button
+        }
+        if ($nameBox -and $saveButton) {
+            SetText $nameBox $pdf
+            Click $saveButton
+        }
+        else {
+            if ($hwnd -ne [IntPtr]::Zero) { [SmokeWin32]::SetForegroundWindow($hwnd) | Out-Null; Start-Sleep -Milliseconds 300 }
+            [System.Windows.Forms.SendKeys]::SendWait(($pdf -replace '([+^%~(){}\[\]])', '{$1}') + '{ENTER}')
+        }
         $done = WaitFor { FindWindowByTitle 'Export hotový|Chyba pri exporte' } 'export result' 30
         "export result: $($done.Current.Name)"
         [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')

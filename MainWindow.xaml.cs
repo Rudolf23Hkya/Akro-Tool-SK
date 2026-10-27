@@ -12,6 +12,7 @@ namespace Atletika_SutaznyPlan_Generator
         public MainWindow()
         {
             InitializeComponent();
+            WindowSizing.FitToWorkArea(this);
             ContentRendered += MainWindow_ContentRendered;
         }
 
@@ -85,11 +86,11 @@ namespace Atletika_SutaznyPlan_Generator
             string copyrightText =
                 "Akro Tool SK\n" +
                 "Copyright (C) 2026 Rudolf Mohňanský\n\n" +
-                "This program is free software: you can redistribute it and/or modify it\n" +
+                "This program is free software: you can redistribute it and/or modify it " +
                 "under the terms of the GNU Affero General Public License, version 3 or later.\n\n" +
                 "This program is distributed without any warranty.\n\n" +
-                "Source code: https://github.com/Rudolf23Hkya/Akro-Tool-SK" +
-                "See COPYING for full license text.";
+                "Source code: https://github.com/Rudolf23Hkya/Akro-Tool-SK\n" +
+                "See COPYING.txt for the full license text and THIRD-PARTY-NOTICES.txt for third-party components.";
 
             MessageBox.Show(
                 copyrightText,

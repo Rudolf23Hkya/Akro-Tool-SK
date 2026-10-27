@@ -193,54 +193,5 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             }
             return boxes;
         }
-
-        public void SetSlotFromImagePath(int slotIndex, string imagePath)
-        {
-            if (!TryParseImageFileName(Path.GetFileName(imagePath), out var rb, out var cat, out var x, out var y))
-                throw new ArgumentException($"Invalid image filename format: {imagePath}", nameof(imagePath));
-
-            SetSlot(slotIndex, rb, cat, x, y, imagePath);
-        }
-
-        public static bool TryParseImageFileName(string fileName, out Rulebook rulebook, out Category category, out int x, out int y)
-        {
-            // Expected: 10r_mxp_01_01.png  => prefix_cat_col_row.png
-            rulebook = default;
-            category = default;
-            x = 0; y = 0;
-
-            var name = Path.GetFileNameWithoutExtension(fileName);
-            var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 4) return false;
-
-            var prefix = parts[0]; // 10r / 14r
-            var group = AgeGroups.All.FirstOrDefault(g => g.FilePrefix.Equals(prefix, StringComparison.OrdinalIgnoreCase));
-            if (group is null) return false;
-            rulebook = group.Rulebook;
-
-            // Category token can be "mxp" or "m_x_p" depending on source
-            // Everything between prefix and last two numbers is category
-            var colToken = parts[^2];
-            var rowToken = parts[^1];
-
-            if (!int.TryParse(colToken, out x)) return false; // column
-            if (!int.TryParse(rowToken, out y)) return false; // row
-
-            var catToken = string.Join("_", parts.Skip(1).Take(parts.Length - 3)).ToLowerInvariant();
-
-            category = catToken switch
-            {
-                "wp" => Category.WP,
-                "mp" => Category.MP,
-                "mxp" => Category.MxP,
-                "m_x_p" => Category.MxP,
-                "wg" => Category.WG,
-                "mg" => Category.MG,
-                "inv" => Category.Inv,
-                _ => default
-            };
-
-            return Enum.IsDefined(category);
-        }
     }
 }

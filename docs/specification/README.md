@@ -43,7 +43,7 @@ Phase 5  Age check for every group (#28 TODO) — always the LAST step       (ca
 | 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | Merged (PR #32); real pictures (O3) pending, mocks until then |
 | 3 | [phase-3-sep-exercises.md](phase-3-sep-exercises.md) | L | Merged (PR #33) |
 | 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | Merged (PR #34); template edit (O4) still open — only the PDF file changes |
-| 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | PR open (`feature/phase-5-age-check`) |
+| 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | Merged (PR #35) |
 
 Reference data (table sizes, column values, empty cells, age limits) lives in **one** place:
 [01-age-group-tables.md](01-age-group-tables.md).
@@ -56,7 +56,7 @@ Reference data (table sizes, column values, empty cells, age limits) lives in **
 | O2 | Upload the rulebook PDFs to `docs/` (planned by the owner) | Phase 2 (reference) |
 | O3 | Prepare the exercise pictures for Do 8, Od 8 – 14 and Individuálna zostava | End of Phase 2 (mocks until then) |
 | O4 | Edit `Cvicebny-plan_Template.pdf` in Acrobat: add 4 more boxes (→ 16) and turn the box numbers into text fields `BoxNumber.0–15` (see Phase 4, part 4.1) | Phase 4 |
-| O5 | Confirm or correct the assumptions A1–A13 in [00-decisions-and-open-questions.md](00-decisions-and-open-questions.md) | before the phase that needs them |
+| O5 | ~~Confirm or correct the assumptions A1–A13~~ — confirmed 2026-10-28 | done |
 
 ## 4. Ground rules (from CLAUDE.md, apply to every phase)
 

@@ -21,7 +21,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 {
     public static class TrainingPlanPdfIText
     {
-        private const string DefaultFontRelativePath = @"Assets\NotoSans-Bold.ttf";
+        // Same folder name and case as in the project (assets\NotoSans-Bold.ttf, copied next to the exe)
+        private static readonly string DefaultFontRelativePath = System.IO.Path.Combine("assets", "NotoSans-Bold.ttf");
 
         /// <summary>
         /// Exports a flattened PDF from the template using TrainingPlanFormData:

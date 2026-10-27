@@ -43,107 +43,6 @@
 
         <Grid>
             <Grid.Resources>
-                <!-- Reusable card template: image + bottom label -->
-                <DataTemplate x:Key="ExerciseCardTemplate">
-                    <Border CornerRadius="6"
-                           BorderBrush="Black"
-                           BorderThickness="1"
-                           Margin="12"
-                           SnapsToDevicePixels="True">
-                        <Border.LayoutTransform>
-                            <ScaleTransform ScaleX="0.65" ScaleY="0.65"/>
-                        </Border.LayoutTransform>
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="34"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Image area -->
-                            <Border Grid.Row="0" Background="#EEEEEE">
-                                <Image Source="{Binding Image,
-                                       TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
-                                       FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
-                                       
-                                       Stretch="Uniform"
-                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       RenderTransformOrigin="0.5,0.5">
-                                </Image>
-                            </Border>
-
-                            <!-- Bottom label strip -->
-                            <Border Grid.Row="1"
-                                    Background="White"
-                                    BorderBrush="Black"
-                                    BorderThickness="0,1,0,0">
-                                <TextBlock Text="{Binding Label}"
-                                           FontSize="16"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Border>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-
-                <!-- Clickable tile for the new 12 "windows" selector -->
-                <DataTemplate x:Key="CategoryTileTemplate">
-                    <Button Background="Transparent"
-                        BorderThickness="0"
-                        Padding="0"
-                        Margin="6"
-                        Cursor="Hand"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                        CommandParameter="{Binding}">
-                        <Border CornerRadius="8"
-                            BorderBrush="Black"
-                            BorderThickness="1"
-                            SnapsToDevicePixels="True">
-                            <Border.LayoutTransform>
-                                <ScaleTransform ScaleX="0.65" ScaleY="0.65"/>
-                            </Border.LayoutTransform>
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="38"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Image area -->
-                                <Border Grid.Row="0" Background="#EEEEEE">
-                                    <Image Source="{Binding Image,
-                                            TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
-                                            FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
-                                           
-                                           Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                       RenderTransformOrigin="0.5,0.5">
-                                        <Image.RenderTransform>
-                                            <ScaleTransform ScaleX="0.75" ScaleY="0.75"/>
-                                        </Image.RenderTransform>
-                                    </Image>
-                                </Border>
-
-                                <!-- Bottom label strip -->
-                                <Border Grid.Row="1"
-                                        Background="White"
-                                        BorderBrush="Black"
-                                        BorderThickness="0,1,0,0">
-                                    <TextBlock Text="{Binding Label}"
-                                               FontSize="16"
-                                               FontWeight="SemiBold"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                        </Border>
-                    </Button>
-                </DataTemplate>
-
                 <!-- Soft, rounded separators (used for all dividers) -->
                 <Style x:Key="SoftSeparatorStyle" TargetType="Border">
                     <Setter Property="Background" Value="#B5B5B5"/>
@@ -520,7 +419,7 @@
                            VerticalAlignment="Center"/>
 
                         <TextBlock Grid.Column="1"
-                           Text="{Binding ClubName, StringFormat=   |   NázovKlubu: {0}}"
+                           Text="{Binding ClubName, StringFormat=   |   Názov klubu: {0}}"
                            FontSize="22"
                            VerticalAlignment="Center"
                            Margin="18,0,0,0"/>
