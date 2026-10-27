@@ -25,6 +25,14 @@ Depends on: Phase 2.
   quartet: all four; Individuálna zostava: none) so a forgotten year in an unused card cannot trigger a warning.
   *(Today all four cards are checked.)* — confirm in review.
 
+## Implementation notes (2026-10-27)
+- 5.3 decided by the owner (D16): only the team's cards are checked (`GetTeamMembers`, same mapping as Zvlášť).
+- Message: header, then the too-old block, then the too-young block, each with its explanation line.
+- Verified on the Windows host (`tools/ui-smoke-test.ps1 -BirthYears … -AgeWarning Ok|PrintAnyway`, year 2026):
+  Od 8 – 14 WP (Top 2019 too young, Base 2012 too old, unused Middle 2000 ignored), Od 8 – 14 MG (2nd Middle 2019
+  too young → Tlačiť aj tak prints), Do 14 (Base 2012 too old), Do 8 (2019 ok, unused 2010 ignored),
+  Individuálna zostava (2000 → no warning), Do 10 (2016 too old). Do 10 without years: PDF unchanged.
+
 ## Acceptance
 - For each group: one athlete just inside and one just outside each limit → warning only for the outside one.
 - Individuálna zostava → never a warning.

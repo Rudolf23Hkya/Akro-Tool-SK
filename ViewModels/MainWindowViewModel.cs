@@ -609,26 +609,31 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // === Team members for Zvlášť ===
         // Role = shown in the app; Position = printed in the exercise ID (R1.Top, decision D13)
-        private sealed record TeamMember(string Role, string Name, string Position);
+        private sealed record TeamMember(string Role, string Name, string Position, string BirthYear);
 
-        // Order Base -> Top (assumption A4): pair = Base, Top; trio = Base, Middle (1st card), Top;
-        // quartet = Base, Middle (2nd card), Middle (1st card), Top — the two Middles print as Middle2 / Middle1 (A11)
+        // The athlete cards the team uses, in order Base -> Top (assumption A4): pair = Base, Top;
+        // trio = Base, Middle (1st card), Top; quartet = Base, Middle (2nd card), Middle (1st card), Top —
+        // the two Middles print as Middle2 / Middle1 (A11)
         private IReadOnlyList<TeamMember> GetTeamMembers() => SelectedBackendCategory switch
         {
             Category.WG => new[]
             {
-                new TeamMember("Base", BaseName, "Base"),
-                new TeamMember("Middle", Middle1Name, "Middle"),
-                new TeamMember("Top", TopName, "Top")
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
+                new TeamMember("Middle", Middle1Name, "Middle", Middle1BirthYear),
+                new TeamMember("Top", TopName, "Top", TopBirthYear)
             },
             Category.MG => new[]
             {
-                new TeamMember("Base", BaseName, "Base"),
-                new TeamMember("Middle", Middle2Name, "Middle2"),
-                new TeamMember("Middle", Middle1Name, "Middle1"),
-                new TeamMember("Top", TopName, "Top")
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
+                new TeamMember("Middle", Middle2Name, "Middle2", Middle2BirthYear),
+                new TeamMember("Middle", Middle1Name, "Middle1", Middle1BirthYear),
+                new TeamMember("Top", TopName, "Top", TopBirthYear)
             },
-            _ => new[] { new TeamMember("Base", BaseName, "Base"), new TeamMember("Top", TopName, "Top") }
+            _ => new[]
+            {
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
+                new TeamMember("Top", TopName, "Top", TopBirthYear)
+            }
         };
 
         // A name counts only with at least 3 characters (issue #29)
@@ -731,38 +736,47 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         // === Age group check (issue #28) ===
         // Age counts by year: an athlete who turns N during the competition year counts as N,
         // even if the competition is before the birthday. Not a hard block, only a warning.
-        // Limits come from AgeGroupDefinition.MaxAge (Do 10: 9 — turning 10 already means the higher category).
+        // Limits come from AgeGroupDefinition.MinAge / MaxAge (Do 10: max 9 — turning 10 already means the higher
+        // category; Od 8 – 14: 8..13; Individuálna zostava: none). Only the cards the team uses are checked.
         private bool ConfirmAgeGroupOrPrintAnyway()
         {
+            var minAge = CurrentAgeGroup.MinAge;
             var maxAge = CurrentAgeGroup.MaxAge;
-            if (maxAge is null)
+            if (minAge is null && maxAge is null)
                 return true;
 
             var competitionYear = DateTime.Now.Year;
 
-            var athletes = new (string role, string? name, string? birthYear)[]
-            {
-                ("Top", FormData.AthleteTopName, FormData.AthleteTopDob),
-                ("Middle", FormData.AthleteMiddle1Name, FormData.AthleteMiddle1Dob),
-                ("Middle", FormData.AthleteMiddle2Name, FormData.AthleteMiddle2Dob),
-                ("Base", FormData.AthleteBaseName, FormData.AthleteBaseDob),
-            };
-
-            var tooOld = athletes
-                .Where(a => int.TryParse(a.birthYear, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
-                            && competitionYear - year > maxAge)
-                .Select(a => string.IsNullOrWhiteSpace(a.name)
-                    ? $"{a.role} ({a.birthYear})"
-                    : $"{a.name} – {a.role} ({a.birthYear})")
+            // Top first, like the cards on screen
+            var athletes = GetTeamMembers()
+                .Reverse()
+                .Select(m => (role: m.Role, name: m.Name, birthYear: m.BirthYear,
+                              age: int.TryParse(m.BirthYear, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
+                                  ? competitionYear - year
+                                  : (int?)null))
+                .Where(a => a.age.HasValue)
                 .ToList();
 
-            if (tooOld.Count == 0)
+            static string Describe((string role, string name, string birthYear, int? age) a)
+                => string.IsNullOrWhiteSpace(a.name)
+                    ? $"{a.role} ({a.birthYear})"
+                    : $"{a.name} – {a.role} ({a.birthYear})";
+
+            var tooOld = athletes.Where(a => maxAge.HasValue && a.age > maxAge).Select(Describe).ToList();
+            var tooYoung = athletes.Where(a => minAge.HasValue && a.age < minAge).Select(Describe).ToList();
+
+            if (tooOld.Count == 0 && tooYoung.Count == 0)
                 return true;
 
-            var message =
-                $"Rok narodenia týchto pretekárov nezodpovedá vekovej skupine {SelectedRulebook.ToSlovakLabel()}:\n\n" +
-                string.Join("\n", tooOld) +
-                $"\n\nV roku {competitionYear} dovŕšia {maxAge + 1} alebo viac rokov.";
+            var message = $"Rok narodenia týchto pretekárov nezodpovedá vekovej skupine {SelectedRulebook.ToSlovakLabel()}:";
+
+            if (tooOld.Count > 0)
+                message += "\n\n" + string.Join("\n", tooOld) +
+                           $"\n\nV roku {competitionYear} dovŕšia {maxAge + 1} alebo viac rokov.";
+
+            if (tooYoung.Count > 0)
+                message += "\n\n" + string.Join("\n", tooYoung) +
+                           $"\n\nV roku {competitionYear} ešte nedovŕšia {minAge} rokov.";
 
             var dialog = new Views.AgeWarningDialog(message)
             {

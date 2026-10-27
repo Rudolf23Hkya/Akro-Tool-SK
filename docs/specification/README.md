@@ -42,8 +42,8 @@ Phase 5  Age check for every group (#28 TODO) — always the LAST step       (ca
 | 1 | [phase-1-data-driven-foundation.md](phase-1-data-driven-foundation.md) | L | Merged (PR #31) |
 | 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | Merged (PR #32); real pictures (O3) pending, mocks until then |
 | 3 | [phase-3-sep-exercises.md](phase-3-sep-exercises.md) | L | Merged (PR #33) |
-| 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | PR open (`feature/phase-4-print-zvlast`); works with the current template, template edit (O4) still open |
-| 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | |
+| 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | Merged (PR #34); template edit (O4) still open — only the PDF file changes |
+| 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | PR open (`feature/phase-5-age-check`) |
 
 Reference data (table sizes, column values, empty cells, age limits) lives in **one** place:
 [01-age-group-tables.md](01-age-group-tables.md).
