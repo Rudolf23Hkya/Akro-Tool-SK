@@ -6,10 +6,14 @@ using System.Linq;
 using iText.Forms;
 using iText.Forms.Fields;
 using iText.IO.Font;
+using iText.IO.Font.Constants;
 using iText.IO.Image;
 using iText.Kernel.Font;
 using iText.Kernel.Geom;
+using iText.Kernel.Colors;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Utils;
 using iText.Layout;
 using iText.Layout.Element;
 
@@ -21,19 +25,17 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
         /// <summary>
         /// Exports a flattened PDF from the template using TrainingPlanFormData:
-        /// - fills all text fields (including per-tile ExerciseDifficulity.* and ExerciseID.*)
-        /// - places 12 images into Image1_af_image.0..11
-        /// - removes the image fields (so placeholders can't cover images)
-        /// - flattens remaining fields (so no AcroForm controls remain)
+        /// - the picture boxes are filled in routine order (Okno 1, 2.a, 2.b, 3, ... — issue #30);
+        ///   when they don't fit on one sheet, more pages are added (same template, same header)
+        /// - per box: picture, ExerciseDifficulity.k, ExerciseID.k and the box number
+        /// - image fields are removed (so placeholders can't cover images), the rest is flattened
         /// </summary>
         public static void ExportFromFormData(
             string templatePath,
             string outputPath,
             TrainingPlanFormData data,
             CultureInfo? culture = null,
-            float imageMarginPoints = 3f,
-            bool removeImageFields = true,
-            bool flatten = true
+            float imageMarginPoints = 3f
         )
         {
             culture ??= new CultureInfo("sk-SK");
@@ -45,36 +47,153 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             if (!File.Exists(fontPath))
                 throw new FileNotFoundException("PDF font not found.", fontPath);
 
-            using var pdfDoc = new PdfDocument(new PdfReader(templatePath), new PdfWriter(outputPath));
-            var form = PdfAcroForm.GetAcroForm(pdfDoc, true);
+            var header = data.ToHeaderFieldMap(culture);
+            var boxes = data.ToPrintBoxes();
 
-            // Embedded Unicode font for Slovak characters
-            PdfFont font = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+            // The template decides how many boxes fit on one sheet (12 today, 16 after the edit for #30)
+            int boxesPerPage = CountPictureBoxes(templatePath);
+            if (boxesPerPage == 0)
+                throw new InvalidOperationException("The PDF template has no picture boxes.");
 
-            // Use this Document for fixed-position image placement
-            using var doc = new Document(pdfDoc);
+            int pageCount = Math.Max(1, (boxes.Count + boxesPerPage - 1) / boxesPerPage);
 
-            // 1) Fill TEXT fields from backend (includes per-slot ExerciseDifficulity.* and ExerciseID.*)
-            var textMap = data.ToTextFieldMap(culture);
-            FillTextFields(form, textMap, font);
+            // Each page is filled and flattened on its own, then all pages are joined into the output file
+            using var output = new PdfDocument(new PdfWriter(outputPath));
+            var merger = new PdfMerger(output);
 
-            // 2) Place IMAGES for the 12 tiles + remove their image fields so they cannot cover the images
-            var imagePairs = data.ToImageFieldList(); // (Image1_af_image.N, path)
-            PlaceImagesIntoFieldRects(pdfDoc, doc, form, imagePairs, imageMarginPoints, removeImageFields);
-
-            // Optional: remove the parent field too (harmless if it doesn't exist)
-            if (removeImageFields)
+            for (int page = 0; page < pageCount; page++)
             {
-                var parent = form.GetField("Image1_af_image");
-                if (parent != null)
+                var pageBoxes = boxes.Skip(page * boxesPerPage).Take(boxesPerPage).ToList();
+                var pageBytes = FillPage(templatePath, fontPath, header, pageBoxes, boxesPerPage,
+                                         isFirstPage: page == 0, culture, imageMarginPoints);
+
+                using var pageDoc = new PdfDocument(new PdfReader(new MemoryStream(pageBytes)));
+                merger.Merge(pageDoc, 1, pageDoc.GetNumberOfPages());
+            }
+        }
+
+        // Fills one copy of the template: header + the given boxes (box k of this page = Image1_af_image.k)
+        private static byte[] FillPage(
+            string templatePath,
+            string fontPath,
+            Dictionary<string, string> header,
+            IReadOnlyList<PrintBox> boxes,
+            int boxesPerPage,
+            bool isFirstPage,
+            CultureInfo culture,
+            float imageMarginPoints)
+        {
+            using var ms = new MemoryStream();
+
+            using (var pdfDoc = new PdfDocument(new PdfReader(templatePath), new PdfWriter(ms)))
+            {
+                var form = PdfAcroForm.GetAcroForm(pdfDoc, true);
+
+                // Embedded Unicode font for Slovak characters
+                PdfFont font = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+
+                // Use this Document for fixed-position image placement
+                using var doc = new Document(pdfDoc);
+
+                // Box rectangles are needed for the box numbers below, before the image fields are removed
+                var boxRects = Enumerable.Range(0, boxesPerPage)
+                    .Select(k => form.GetField(AcroFieldNames.ImageField(k))?.GetWidgets()?.FirstOrDefault()?.GetRectangle().ToRectangle())
+                    .ToList();
+
+                // 1) Text: header + per-box value / ID / number
+                var textMap = new Dictionary<string, string>(header);
+                var printedNumbers = new List<(int box, string label)>();
+
+                for (int k = 0; k < boxesPerPage; k++)
                 {
-                    form.RemoveField("Image1_af_image");
+                    var label = k < boxes.Count ? boxes[k].Label : "";
+
+                    if (k < boxes.Count)
+                    {
+                        if (boxes[k].Difficulty is decimal difficulty)
+                            textMap[AcroFieldNames.ExerciseDifficultyField(k)] = difficulty.ToString("0.000", culture);
+                        textMap[AcroFieldNames.ExerciseIdField(k)] = boxes[k].ExerciseId;
+                    }
+
+                    if (form.GetField(AcroFieldNames.BoxNumberField(k)) != null)
+                    {
+                        if (label.Length > 0)
+                            textMap[AcroFieldNames.BoxNumberField(k)] = label;
+                    }
+                    else
+                    {
+                        // Template without BoxNumber fields: the numbers 1..N are printed text.
+                        // Replace a number only where it differs (unused boxes are blanked on extra pages).
+                        var printed = (k + 1).ToString(CultureInfo.InvariantCulture);
+                        if (label.Length > 0 ? label != printed : !isFirstPage)
+                            printedNumbers.Add((k, label));
+                    }
                 }
+
+                FillTextFields(form, textMap, font);
+
+                // 2) Pictures + remove their image fields so they cannot cover the images
+                var imagePairs = boxes.Select((b, k) => (AcroFieldNames.ImageField(k), b.ImagePath)).ToList();
+                PlaceImagesIntoFieldRects(pdfDoc, doc, form, imagePairs, imageMarginPoints, removeImageFields: true);
+
+                // Remove the parent field too, so unused boxes print empty
+                if (form.GetField(AcroFieldNames.ImageFieldsParent) != null)
+                    form.RemoveField(AcroFieldNames.ImageFieldsParent);
+
+                // 3) Box numbers drawn over the printed ones (old template only), regular face of similar size
+                if (printedNumbers.Count > 0)
+                {
+                    var numberFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+                    foreach (var (box, label) in printedNumbers)
+                    {
+                        if (boxRects[box] is Rectangle rect)
+                            ReplacePrintedBoxNumber(pdfDoc.GetPage(1), rect, label, numberFont);
+                    }
+                }
+
+                // 4) Flatten remaining fields (text fields etc.)
+                form.FlattenFields();
             }
 
-            // 3) Flatten remaining fields (text fields etc.)
-            if (flatten)
-                form.FlattenFields();
+            return ms.ToArray();
+        }
+
+        // Number of picture boxes: Image1_af_image.0, .1, ... without gaps
+        private static int CountPictureBoxes(string templatePath)
+        {
+            using var pdfDoc = new PdfDocument(new PdfReader(templatePath));
+            var form = PdfAcroForm.GetAcroForm(pdfDoc, false);
+            if (form == null) return 0;
+
+            int count = 0;
+            while (form.GetField(AcroFieldNames.ImageField(count)) != null)
+                count++;
+            return count;
+        }
+
+        // The printed box number sits in the strip just above the picture rectangle, at its left edge
+        // (Cvicebny-plan_Template.pdf: 9.8 pt text, baseline ~4.3 pt above the picture). Cover it with white
+        // and write the new label ("2.b") in its place; an empty label only blanks the number.
+        private static void ReplacePrintedBoxNumber(PdfPage page, Rectangle pictureRect, string label, PdfFont font)
+        {
+            var canvas = new PdfCanvas(page);
+
+            canvas.SaveState()
+                  .SetFillColor(ColorConstants.WHITE)
+                  .Rectangle(pictureRect.GetLeft() + 1.5f, pictureRect.GetTop() + 1.5f, 30f, 10.5f)
+                  .Fill()
+                  .RestoreState();
+
+            if (label.Length > 0)
+            {
+                canvas.BeginText()
+                      .SetFontAndSize(font, 8.5f)
+                      .MoveText(pictureRect.GetLeft() + 1.9f, pictureRect.GetTop() + 4.3f)
+                      .ShowText(label)
+                      .EndText();
+            }
+
+            canvas.Release();
         }
 
         private static void FillTextFields(PdfAcroForm form, Dictionary<string, string> textMap, PdfFont font)
