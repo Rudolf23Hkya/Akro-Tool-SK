@@ -84,7 +84,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public string GetSlotExerciseId(int slotIndex)
         {
             var s = _slots[slotIndex] ?? throw new InvalidOperationException($"Slot {slotIndex} not set.");
-            var prefix = s.Category == Category.Inv ? "Inv" : "";
+            // "Inv" only distinguishes the two tables; Individuálna zostava has just one table -> plain R{row}
+            var prefix = s.Category == Category.Inv && AgeGroups.Get(s.Rulebook).HasTeamTables ? "Inv" : "";
             return $"{prefix}R{s.Y}";
         }
 

@@ -39,8 +39,8 @@ Phase 5  Age check for every group (#28 TODO) — always the LAST step       (ca
 | Phase | Document | Size | Status |
 |---|---|---|---|
 | 0 | [phase-0-ship-26-28.md](phase-0-ship-26-28.md) | S | Merged 2026-10-27 (6c9fb70); #26 closed; smoke test script added with Phase 1 |
-| 1 | [phase-1-data-driven-foundation.md](phase-1-data-driven-foundation.md) | L | PR open (`feature/phase-1-data-driven-foundation`) |
-| 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | |
+| 1 | [phase-1-data-driven-foundation.md](phase-1-data-driven-foundation.md) | L | Merged (PR #31) |
+| 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | PR open (`feature/phase-2-new-age-groups`); real pictures (O3) pending, mocks until then |
 | 3 | [phase-3-sep-exercises.md](phase-3-sep-exercises.md) | L | |
 | 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | |
 | 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | |

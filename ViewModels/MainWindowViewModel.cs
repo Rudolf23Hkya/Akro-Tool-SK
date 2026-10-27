@@ -43,8 +43,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             => ExerciseSlots.Any(s => !string.IsNullOrWhiteSpace(s.ImagePath));
 
         // === Rulebook (age category) ===
+        // Same order as AgeGroups.All
         public ObservableCollection<Rulebook> Rulebooks { get; } =
-            new(Enum.GetValues(typeof(Rulebook)).Cast<Rulebook>());
+            new(AgeGroups.All.Select(g => g.Rulebook));
 
         private Rulebook _selectedRulebook = Rulebook.DO_10_ROK;
         public Rulebook SelectedRulebook
@@ -66,6 +67,17 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(CurrentAgeGroup));
                 OnPropertyChanged(nameof(TeamPicks));
                 OnPropertyChanged(nameof(InvPicks));
+
+                // E.g. WG -> Do 8 rokov (pairs only): fall back to WP, the Okno are cleared anyway
+                if (CurrentAgeGroup.HasTeamTables && !CurrentAgeGroup.IsCategoryAllowed(_selectedBackendCategory))
+                    ApplyCategory(Category.WP);
+
+                OnPropertyChanged(nameof(IsWPEnabled));
+                OnPropertyChanged(nameof(IsMPEnabled));
+                OnPropertyChanged(nameof(IsMxPEnabled));
+                OnPropertyChanged(nameof(IsWGEnabled));
+                OnPropertyChanged(nameof(IsMGEnabled));
+                OnPropertyChanged(nameof(IsDisciplineEnabled));
 
                 UpdatePdfCategoryFields();
                 ResetExerciseSlots();
@@ -126,9 +138,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(IsBalance));
 
                 // backend priority: store as string
-                FormData.Discipline = _selectedRoutine.ToSlovakLabel();
+                UpdatePdfCategoryFields();
             }
         }
+
+        // Individuálna zostava has a fixed discipline on the PDF (decision D11)
+        public bool IsDisciplineEnabled => CurrentAgeGroup.HasTeamTables;
 
         public bool IsCombi { get => SelectedRoutine == RoutineType.Combi; set { if (value) SelectedRoutine = RoutineType.Combi; } }
         public bool IsDynamic { get => SelectedRoutine == RoutineType.Dynamic; set { if (value) SelectedRoutine = RoutineType.Dynamic; } }
@@ -151,21 +166,32 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     return;
                 }
 
-                _selectedBackendCategory = value;
-                OnPropertyChanged();
-
-                OtherCatLabel = value.ToString();
-
-                OnPropertyChanged(nameof(IsWP));
-                OnPropertyChanged(nameof(IsMP));
-                OnPropertyChanged(nameof(IsMxP));
-                OnPropertyChanged(nameof(IsWG));
-                OnPropertyChanged(nameof(IsMG));
-
+                ApplyCategory(value);
                 UpdatePdfCategoryFields();
                 ResetExerciseSlots();
             }
         }
+
+        private void ApplyCategory(Category value)
+        {
+            _selectedBackendCategory = value;
+            OnPropertyChanged(nameof(SelectedBackendCategory));
+
+            OtherCatLabel = value.ToString();
+
+            OnPropertyChanged(nameof(IsWP));
+            OnPropertyChanged(nameof(IsMP));
+            OnPropertyChanged(nameof(IsMxP));
+            OnPropertyChanged(nameof(IsWG));
+            OnPropertyChanged(nameof(IsMG));
+        }
+
+        // Categories offered by the selected age group (e.g. Do 8 rokov: pairs only)
+        public bool IsWPEnabled => CurrentAgeGroup.IsCategoryAllowed(Category.WP);
+        public bool IsMPEnabled => CurrentAgeGroup.IsCategoryAllowed(Category.MP);
+        public bool IsMxPEnabled => CurrentAgeGroup.IsCategoryAllowed(Category.MxP);
+        public bool IsWGEnabled => CurrentAgeGroup.IsCategoryAllowed(Category.WG);
+        public bool IsMGEnabled => CurrentAgeGroup.IsCategoryAllowed(Category.MG);
 
         public bool IsWP { get => SelectedBackendCategory == Category.WP; set { if (value) SelectedBackendCategory = Category.WP; } }
         public bool IsMP { get => SelectedBackendCategory == Category.MP; set { if (value) SelectedBackendCategory = Category.MP; } }
@@ -341,6 +367,11 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             }
         }
 
+        // "WP: 2/6   Inv: 1/6" — Individuálna zostava has only the one table: "Inv: 3/8"
+        public string PickCounterText => CurrentAgeGroup.HasTeamTables
+            ? $"{OtherCatLabel}: {OtherCatCount}/{TeamPicks}   Inv: {InvCount}/{InvPicks}"
+            : $"Inv: {InvCount}/{InvPicks}";
+
         private int _invCount = 0;
         public int InvCount
         {
@@ -369,7 +400,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             ResetExerciseSlots();
 
-            FormData.Discipline = SelectedRoutine.ToSlovakLabel();
             UpdatePdfCategoryFields();
         }
 
@@ -593,9 +623,21 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         private void UpdatePdfCategoryFields()
         {
-            FormData.Category1 = SelectedBackendCategory.ToString();
             FormData.Category2 = SelectedRulebook.ToSlovakLabel();
-            FormData.TeamSizeText = MapTeamSizeText(SelectedBackendCategory);
+
+            if (CurrentAgeGroup.HasTeamTables)
+            {
+                FormData.Category1 = SelectedBackendCategory.ToString();
+                FormData.TeamSizeText = MapTeamSizeText(SelectedBackendCategory);
+                FormData.Discipline = SelectedRoutine.ToSlovakLabel();
+            }
+            else
+            {
+                // Individuálna zostava (decision D11)
+                FormData.Category1 = Category.Inv.ToString();
+                FormData.TeamSizeText = MapTeamSizeText(Category.Inv);
+                FormData.Discipline = CurrentAgeGroup.Label;
+            }
 
             // Optional, only if something in the UI binds directly to these
             OnPropertyChanged(nameof(FormData));
@@ -658,7 +700,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             var exerciseId = FormData.GetSlotExerciseId(slotIndex);
             var sourceCategory = ExerciseSlots[slotIndex].Category;
 
-            if (sourceCategory == Category.Inv && exerciseId.Length > 3)
+            if (sourceCategory == Category.Inv && exerciseId.StartsWith("Inv"))
                 exerciseId = exerciseId.Substring(3);
 
             return $"{difficulty} - {exerciseId} - {sourceCategory}";
@@ -675,6 +717,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 s.Category != Category.Inv);
 
             Obtaznost = FormData.OverallDifficulty;
+
+            OnPropertyChanged(nameof(PickCounterText));
         }
 
         private int CountInvExercisesExcludingSlot(int slotIndex)

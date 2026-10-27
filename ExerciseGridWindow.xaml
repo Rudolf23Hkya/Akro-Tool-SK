@@ -10,6 +10,8 @@
         FontFamily="Segoe UI">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
         <Style x:Key="ImageButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -108,6 +110,7 @@
                           VerticalAlignment="Center"
                           IsChecked="{Binding ShowIndividualTable, Mode=TwoWay}"
                           IsEnabled="{Binding CanToggleIndividual}"
+                          Visibility="{Binding IsTableToggleVisible, Converter={StaticResource BoolToVisibility}}"
                           Content="{Binding ToggleText}" />
                 </StackPanel>
 
@@ -123,7 +126,8 @@
             <!-- Rows x columns grid of exercises (size comes from the table definition) -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding VisibleExercises}"
-                              ItemTemplate="{StaticResource ExerciseImageButtonTemplate}">
+                              ItemTemplate="{StaticResource ExerciseImageButtonTemplate}"
+                              VerticalAlignment="Top">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding VisibleColumns}" Rows="{Binding VisibleRows}"/>

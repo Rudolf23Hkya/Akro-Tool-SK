@@ -9,12 +9,14 @@ official Slovak competition plan sheet (*"Súťažný plán – športová akrob
 
 Coach workflow:
 1. On start, the app asks for the **event name**, then **trainer / contact / club** (two modal dialogs).
-2. Coach picks **age group** (rulebook: *Do 10 rokov* / *Do 14 rokov*), **discipline** (Combi / Dynamic / Balance)
-   and **category** (WP, MP, MxP, WG, MG).
+2. Coach picks **age group** (rulebook: *Do 8 rokov* / *Do 10 rokov* / *Do 14 rokov* / *Od 8 – 14 rokov* /
+   *Individuálna zostava*), **discipline** (Combi / Dynamic / Balance) and **category** (WP, MP, MxP, WG, MG —
+   Do 8 only pairs; Individuálna zostava has no category and a fixed discipline).
 3. Coach enters up to 4 athletes (Top, Middle, Middle, Base) with names and birth years.
-4. Coach clicks each of the **12 slots** ("Okno 1..12"). A pop-up grid shows the exercise pictures from the database
-   (6 rows × 5 columns) for the chosen category, with a toggle to the **Individual (Inv)** table.
-5. **Tlačiť** (Print) → Save dialog → fills `Cvicebny-plan_Template.pdf` with text + the 12 pictures, flattens it.
+4. Coach clicks each **slot** ("Okno 1..12" for Do 10 / Do 14, "Okno 1..8" for the other groups). A pop-up grid shows
+   the exercise pictures of the table used by the chosen category (Do 10 / Do 14: 6 rows × 5 columns), with a toggle
+   to the **Individual (Inv)** table.
+5. **Tlačiť** (Print) → Save dialog → fills `Cvicebny-plan_Template.pdf` with text + the pictures, flattens it.
 
 UI language is **Slovak**. The owner writes issues/notes in **English and Hungarian**. Keep user-facing strings in Slovak.
 
@@ -125,9 +127,17 @@ DataBase/
       <prefix>_<cat>_<COL>_<ROW>.png   e.g. 10r_mp_03_02.png = column 3, row 2
           input_4_crop/                    original uncropped source images (NOT indexed; kept on purpose, see below)
   AutoCrop_TableBar_Resize_v4_Dialog.jsx   Photoshop batch script used to crop input_4_crop -> final PNGs
+
+  Not delivered yet (owner prepares the pictures; confirmed names, docs/specification/01-age-group-tables.md §3):
+  do8_db/        prefix "8r"    duo/ inv/
+  od8_14_db/     prefix "814r"  par/ trojica/ stvorica/ inv/
+  individual_db/ prefix "ir"    individual/
 ```
 
-- 2 rulebooks × 6 categories × 30 images (5 columns × 6 rows) = 360 indexed PNGs, each 1032×536 RGBA.
+- Do 10 / Do 14: 2 rulebooks × 6 categories × 30 images (5 columns × 6 rows) = 360 indexed PNGs, each 1032×536 RGBA.
+- New groups: until a picture exists, `ExerciseImageRepository.GetImagePath` returns the **mock**
+  `do10_db/m_x_p/10r_mxp_01_01.png` (`AgeGroupDefinition.MockImageRelativePath`, owner's choice in #27); a real file
+  always wins. Set `MockImageRelativePath = null` once all pictures are delivered.
 - File-name category token: `wp, mp, mxp (folder m_x_p), wg, mg, inv`. **The filename order is COL then ROW.**
 - `ExerciseImageRepository` regex: `^(?<prefix>[a-z0-9]+)_(?<cat>[a-z_]+)_(?<a>\d{2})_(?<b>\d{2})\.png$`, stores
   `col = a`, `row = b`. Only files directly inside a table folder are indexed (`input_4_crop` is ignored).
@@ -155,7 +165,9 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | **Difficulty** of an exercise = the table's column value; Do 10 / Do 14 = `column × 0.01` (col 1..5 → 0.010..0.050), independent of row/category | `ExerciseTable.GetDifficulty` in `AgeGroups.cs`, stored per slot in `ExerciseSlotSelection.Difficulty` | #12, #13 |
 | **Exercise ID** = `R{row}`; Inv exercises print as `InvR{row}` on the PDF | `TrainingPlanFormData.GetSlotExerciseId` | #13 |
 | Slot label after selection: `"{difficulty:0.000} - R{row} - {Category}"`; grid label: `"R{row} - {difficulty}"` | `BuildSlotLabel`, `BuildExerciseGridLabel` | #13 |
-| Summary bar: `Obť.: <sum>` and `<Cat>: n/{TeamPicks}   Inv: n/{InvPicks}` | `RecalculateExerciseSummary` | #12 |
+| Summary bar: `Obť.: <sum>` and `PickCounterText` = `<Cat>: n/{TeamPicks}   Inv: n/{InvPicks}` (Individuálna zostava: `Inv: n/8`) | `RecalculateExerciseSummary` | #12 |
+| Categories per age group (`IsWPEnabled` …); switching to a group without the current category falls back to WP | `SelectedRulebook` setter → `ApplyCategory` | #27 |
+| **Individuálna zostava**: only the Inv slot of the definition (8×6 table, 8 picks), no toggle, category + discipline radios disabled; PDF `category1 = Inv`, `discipline = Individuálna zostava`, `SOLO`, IDs `R{row}` | `AgeGroups.Individual()`, `UpdatePdfCategoryFields`, `GetSlotExerciseId` | #27 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
 | **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. **TODO (owner, Oct 2026): every age group must be checked** — Do 10 is the reference implementation; add the limits for all groups (incl. the new ones from #27) as the **last** step, after #27 lands. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
@@ -173,9 +185,9 @@ Template `Cvicebny-plan_Template.pdf`: one landscape page. AcroForm fields (name
 |---|---|---|
 | `eventName`, `clubName` | dialogs | |
 | `trainer.name`, `trainer.contact` | TrainerClubDialog | |
-| `category1` | `SelectedBackendCategory.ToString()` (`WP`, `MxP`, …) | |
+| `category1` | `SelectedBackendCategory.ToString()` (`WP`, `MxP`, …); Individuálna zostava: `Inv` | |
 | `category2` | `SelectedRulebook.ToSlovakLabel()` | |
-| `discipline` | `SelectedRoutine.ToSlovakLabel()` | e.g. `Zmiešaná zostava` (issue #26) |
+| `discipline` | `SelectedRoutine.ToSlovakLabel()`; Individuálna zostava: `Individuálna zostava` | e.g. `Zmiešaná zostava` (issue #26) |
 | `teamSizeText` | `MapTeamSizeText` | |
 | `overallDifficulity` | sum of 12 difficulties, `0.000`, sk-SK (comma decimal) | |
 | `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | `.dateOfBirth` holds only the birth year (issue #28) |
@@ -207,8 +219,10 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 - The 12-slot tile template is **inline** in the `ItemsControl`. `ExerciseCardTemplate` and `CategoryTileTemplate` in
   `Grid.Resources` are leftovers and not used.
 - **ExerciseGridWindow**: 1250×850, min 1050×700. Header shows `WindowTitle` (e.g. `Cvičenia: WP (Do 10 rokov)`),
-  a `ToggleButton` bound to `ShowIndividualTable` (disabled when `CanToggleIndividual` is false), and "Zavrieť".
-  Grid: `UniformGrid Columns=5 Rows=6` over `VisibleExercises` (switches between `Exercises` and `IndividualExercises`).
+  a `ToggleButton` bound to `ShowIndividualTable` (disabled when `CanToggleIndividual` is false, hidden when the age
+  group has only one table), and "Zavrieť". Title shows the table name when it differs, e.g. `Cvičenia: WP – Pár (Od 8 – 14 rokov)`.
+  Grid: `UniformGrid` with `VisibleColumns`/`VisibleRows` from the table over `VisibleExercises` (switches between
+  `Exercises` and `IndividualExercises`), top-aligned; empty cells are hidden placeholders (`IsEmptyCell`).
   Clicking a tile raises `ExerciseSelected` then `RequestClose`; closing with "Zavrieť" leaves the slot unchanged.
 - Placeholder image for empty slots/missing pictures: `pack://application:,,,/assets/sgf_logo1.png`.
 - Startup dialogs are shown from `MainWindow.ContentRendered` (once).
