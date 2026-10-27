@@ -32,6 +32,8 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | NuGet | `itext` 9.5.0, `itext.bouncy-castle-adapter` 9.5.0 (iText Community, **AGPL**) |
 | Deployment | ClickOnce offline (`<Install>true</Install>`, `<CreateDesktopShortcut>true</CreateDesktopShortcut>`), icon `assets\AkroTool_Icon.ico` |
 | Distribution | Pre-built download linked in `README.txt` (Google Drive) |
+| GitHub | `Rudolf23Hkya/Akro-Tool-SK` (renamed; the old `Atletika_SutaznyPlan_Generator_SK` URL redirects) |
+| Upgrade plan | `docs/specification/` — phases for issues #26–#30, owner decisions, table reference data |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
 | Tests | None. (An old external `Atletika.SmokeTests` console app was only used for beta experiments; its sln reference was removed.) |
 
@@ -156,7 +158,8 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
 | **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. **TODO (owner, Oct 2026): every age group must be checked** — Do 10 is the reference implementation; add the limits for all groups (incl. the new ones from #27) as the **last** step, after #27 lands. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
 
-The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner — don't change it.
+The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner for Do 10 / Do 14 — don't change it.
+The new age groups from #27 use per-table column values instead (see `docs/specification/01-age-group-tables.md`).
 
 Team size text printed from category: WP/MP/MxP → `DUO`, WG → `TRIO`, MG → `QUARTET`, Inv → `SOLO` (`MapTeamSizeText`).
 
