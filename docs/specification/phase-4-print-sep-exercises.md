@@ -72,6 +72,20 @@ Example (Do 10, WP, Okno 2 is Zvlášť from row 3):
   with the Windows PDF API (no extra tools needed) and check placement, IDs, values and page headers.
 - Compare the "no Zvlášť" export with the Phase 2 output — must be identical (apart from the 4 new empty boxes).
 
+## Implementation notes (2026-10-27)
+- Implemented **before** the template edit, so it works with both templates:
+  - **current 12-box template** (no `BoxNumber` fields): 12 boxes per page; where a box number differs from the printed
+    one (e.g. box 3 = `2.b`) the printed number is covered with white and redrawn (Helvetica 8.5 pt, same spot);
+    unused boxes on extra pages get their number blanked. A plan without Zvlášť prints exactly as before.
+  - **edited template**: the app counts `Image1_af_image.*` (→ 16 per page) and fills `BoxNumber.k` when present.
+- IDs: `R{row}.{Position}` with `Base`, `Middle`, `Top`; MG uses `Middle2` / `Middle1` (A11) — the 2nd Middle card
+  chooses before the 1st (Base → Top order).
+- A Zvlášť Okno may continue on the next page (`12.a` on page 1, `12.b` on page 2) — assumption A13.
+- Verified on the Windows host: WP with Zvlášť on Okno 2 (2 pages) and on Okno 12 (split), MG with Zvlášť on all
+  12 Okno on a **simulated** 16-box template with `BoxNumber` fields (48 boxes → 3 pages, total 0,156),
+  Do 10 without Zvlášť still pixel-identical.
+- The simulated template was generated with a scratch iText tool (not in the repo); the real edit stays with the owner (O4).
+
 ## Acceptance
 - Every exercise appears exactly once; IDs show the position for Zvlášť exercises.
 - Only the first box of a Zvlášť Okno has a difficulty value; *Obťažnosť spolu* matches the app on every page.

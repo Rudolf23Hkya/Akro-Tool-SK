@@ -483,7 +483,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             GetTableRule(slot, out var forceIndividualTable, out var lockTableToggle);
 
             ExerciseCardVm? first = null;
-            var picks = new List<(int X, string ImagePath, int MemberIndex)>(members.Count);
+            var picks = new List<(int X, string ImagePath, int MemberIndex, string? Position)>(members.Count);
 
             for (int k = 0; k < members.Count; k++)
             {
@@ -498,7 +498,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     return;
 
                 first ??= chosen;
-                picks.Add((chosen.X, chosen.ImagePath, k));
+                picks.Add((chosen.X, chosen.ImagePath, k, members[k].Position));
             }
 
             FormData.SetSlot(slot.SlotIndex, first!.Rulebook, first.Category, first.Y, picks);
@@ -608,15 +608,27 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         }
 
         // === Team members for Zvlášť ===
-        private sealed record TeamMember(string Role, string Name);
+        // Role = shown in the app; Position = printed in the exercise ID (R1.Top, decision D13)
+        private sealed record TeamMember(string Role, string Name, string Position);
 
         // Order Base -> Top (assumption A4): pair = Base, Top; trio = Base, Middle (1st card), Top;
-        // quartet = Base, Middle (2nd card), Middle (1st card), Top
+        // quartet = Base, Middle (2nd card), Middle (1st card), Top — the two Middles print as Middle2 / Middle1 (A11)
         private IReadOnlyList<TeamMember> GetTeamMembers() => SelectedBackendCategory switch
         {
-            Category.WG => new[] { new TeamMember("Base", BaseName), new TeamMember("Middle", Middle1Name), new TeamMember("Top", TopName) },
-            Category.MG => new[] { new TeamMember("Base", BaseName), new TeamMember("Middle", Middle2Name), new TeamMember("Middle", Middle1Name), new TeamMember("Top", TopName) },
-            _ => new[] { new TeamMember("Base", BaseName), new TeamMember("Top", TopName) }
+            Category.WG => new[]
+            {
+                new TeamMember("Base", BaseName, "Base"),
+                new TeamMember("Middle", Middle1Name, "Middle"),
+                new TeamMember("Top", TopName, "Top")
+            },
+            Category.MG => new[]
+            {
+                new TeamMember("Base", BaseName, "Base"),
+                new TeamMember("Middle", Middle2Name, "Middle2"),
+                new TeamMember("Middle", Middle1Name, "Middle1"),
+                new TeamMember("Top", TopName, "Top")
+            },
+            _ => new[] { new TeamMember("Base", BaseName, "Base"), new TeamMember("Top", TopName, "Top") }
         };
 
         // A name counts only with at least 3 characters (issue #29)

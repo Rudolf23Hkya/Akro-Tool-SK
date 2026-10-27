@@ -44,14 +44,14 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public const string AthleteBaseName = "athleteBase.name";
         public const string AthleteBaseDob = "athleteBase.dateOfBirth";
 
-        public static IReadOnlyList<string> ImageFields { get; } =
-            Enumerable.Range(0, 12).Select(i => $"Image1_af_image.{i}").ToList();
+        // Picture boxes on the sheet: index 0..(box count - 1); the template decides how many exist (12, or 16 after #30)
+        public const string ImageFieldsParent = "Image1_af_image";
+        public static string ImageField(int box) => $"{ImageFieldsParent}.{box}";
+        public static string ExerciseDifficultyField(int box) => $"ExerciseDifficulity.{box}";
+        public static string ExerciseIdField(int box) => $"ExerciseID.{box}";
 
-        public static IReadOnlyList<string> ExerciseDifficultyFields { get; } =
-            Enumerable.Range(0, 12).Select(i => $"ExerciseDifficulity.{i}").ToList();
-
-        public static IReadOnlyList<string> ExerciseIdFields { get; } =
-            Enumerable.Range(0, 12).Select(i => $"ExerciseID.{i}").ToList();
+        // Box number text ("1", "2.a", "2.b", ...) — optional; exists only in templates edited for #30
+        public static string BoxNumberField(int box) => $"BoxNumber.{box}";
     }
 
 
@@ -60,8 +60,13 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         int X,                  // column (1-based)
         decimal Difficulty,     // from the table's column value
         string ImagePath,
-        int MemberIndex         // -1 = whole team; 0.. = team member in Base -> Top order (Zvlášť, issue #29)
+        int MemberIndex,        // -1 = whole team; 0.. = team member in Base -> Top order (Zvlášť, issue #29)
+        string? Position        // Zvlášť: "Base", "Middle", "Middle1", "Middle2", "Top" (printed as R1.Top); null = whole team
     );
+
+    // One picture box on the printed sheet (issue #30). Okno in routine order; a Zvlášť Okno n
+    // becomes n.a, n.b, ... and only n.a carries the Okno value.
+    public sealed record PrintBox(string Label, string ImagePath, decimal? Difficulty, string ExerciseId);
 
     // One Okno: one exercise for the whole team, or one per team member from the same row (Zvlášť)
     public sealed record ExerciseSlotSelection(

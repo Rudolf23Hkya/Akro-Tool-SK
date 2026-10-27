@@ -57,11 +57,11 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
         // One exercise for the whole team
         public void SetSlot(int slotIndex, Rulebook rulebook, Category category, int x, int y, string imagePath)
-            => SetSlot(slotIndex, rulebook, category, y, new[] { (x, imagePath, -1) });
+            => SetSlot(slotIndex, rulebook, category, y, new (int, string, int, string?)[] { (x, imagePath, -1, null) });
 
         // One or more exercises from the same row (Zvlášť: one per team member, issue #29)
         public void SetSlot(int slotIndex, Rulebook rulebook, Category category, int y,
-                            IReadOnlyList<(int X, string ImagePath, int MemberIndex)> picks)
+                            IReadOnlyList<(int X, string ImagePath, int MemberIndex, string? Position)> picks)
         {
             if (slotIndex < 0 || slotIndex >= SlotCount) throw new ArgumentOutOfRangeException(nameof(slotIndex));
             if (picks.Count == 0) throw new ArgumentException("At least one exercise is required.", nameof(picks));
@@ -70,13 +70,13 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             if (y < 1 || y > table.Rows) throw new ArgumentOutOfRangeException(nameof(y));
 
             var exercises = new List<PickedExercise>(picks.Count);
-            foreach (var (x, imagePath, memberIndex) in picks)
+            foreach (var (x, imagePath, memberIndex, position) in picks)
             {
                 if (x < 1 || x > table.Cols) throw new ArgumentOutOfRangeException(nameof(picks), $"Column {x} is outside the table.");
                 if (table.IsEmpty(y, x)) throw new ArgumentException($"No exercise at row {y}, column {x}.");
                 if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentException("ImagePath is required.", nameof(picks));
 
-                exercises.Add(new PickedExercise(x, table.GetDifficulty(x), imagePath, memberIndex));
+                exercises.Add(new PickedExercise(x, table.GetDifficulty(x), imagePath, memberIndex, position));
             }
 
             _slots[slotIndex] = new ExerciseSlotSelection(slotIndex, rulebook, category, y, exercises);
@@ -110,8 +110,10 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
         // ====== Export payloads for PDF fill ======
 
-        /// <summary>Text fields to fill in the PDF.</summary>
-        public Dictionary<string, string> ToTextFieldMap(CultureInfo? culture = null)
+        /// <summary>
+        /// Text fields of the sheet header (everything except the picture boxes). Printed on every page.
+        /// </summary>
+        public Dictionary<string, string> ToHeaderFieldMap(CultureInfo? culture = null)
         {
             culture ??= CultureInfo.InvariantCulture;
 
@@ -151,36 +153,45 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             Add(AcroFieldNames.AthleteBaseName, AthleteBaseName);
             Add(AcroFieldNames.AthleteBaseDob, AthleteBaseDob);
 
-            // Per-slot computed fields
-            for (int i = 0; i < SlotCount; i++)
-            {
-                if (_slots[i] is null) continue;
-
-                var diff = GetSlotDifficulty(i).ToString("0.000", culture);
-                var id = GetSlotExerciseId(i);
-
-                map[AcroFieldNames.ExerciseDifficultyFields[i]] = diff;
-                map[AcroFieldNames.ExerciseIdFields[i]] = id;
-            }
-
             // Overall
             map[AcroFieldNames.OverallDifficulity] = OverallDifficulty.ToString("0.000", culture);
 
             return map;
         }
 
-        /// <summary>Image fields (Image1_af_image.N) -> path</summary>
-        public List<(string fieldName, string imagePath)> ToImageFieldList()
+        /// <summary>
+        /// Picture boxes in routine order (issue #30, Variant B): Okno n -> box "n"; a Zvlášť Okno n -> boxes
+        /// "n.a", "n.b", ... (members Base -> Top). Only the first box of a Zvlášť Okno gets the Okno value;
+        /// its exercise IDs carry the position, e.g. "R1.Top" / "InvR1.Base".
+        /// </summary>
+        public IReadOnlyList<PrintBox> ToPrintBoxes()
         {
-            var list = new List<(string, string)>(SlotCount);
+            var boxes = new List<PrintBox>();
             for (int i = 0; i < SlotCount; i++)
             {
                 var s = _slots[i];
                 if (s is null) continue;
 
-                list.Add((AcroFieldNames.ImageFields[i], s.ImagePath));
+                var id = GetSlotExerciseId(i);
+                var number = (i + 1).ToString(CultureInfo.InvariantCulture);
+
+                if (!s.IsSeparate)
+                {
+                    boxes.Add(new PrintBox(number, s.ImagePath, s.Difficulty, id));
+                    continue;
+                }
+
+                for (int k = 0; k < s.Exercises.Count; k++)
+                {
+                    var e = s.Exercises[k];
+                    boxes.Add(new PrintBox(
+                        $"{number}.{(char)('a' + k)}",
+                        e.ImagePath,
+                        k == 0 ? s.Difficulty : null,
+                        e.Position is null ? id : $"{id}.{e.Position}"));
+                }
             }
-            return list;
+            return boxes;
         }
 
         public void SetSlotFromImagePath(int slotIndex, string imagePath)
