@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Atletika_SutaznyPlan_Generator.Models;
 using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
 using Microsoft.Win32;
@@ -51,38 +52,60 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             get => _selectedRulebook;
             set
             {
-                if (!SetProperty(ref _selectedRulebook, value)) return;
+                if (_selectedRulebook == value) return;
+
+                // Ask BEFORE changing anything: on "Nie" the old age group stays selected
+                if (!ConfirmClearExerciseSelections(ChangeSelectionMessage, ChangeSelectionTitle))
+                {
+                    RestoreSelectionInUi(nameof(SelectedRulebook));
+                    return;
+                }
+
+                _selectedRulebook = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CurrentAgeGroup));
+                OnPropertyChanged(nameof(TeamPicks));
+                OnPropertyChanged(nameof(InvPicks));
+
                 UpdatePdfCategoryFields();
-                ClearExerciseSelections();
+                ResetExerciseSlots();
             }
         }
-        private void ClearExerciseSelections()
+
+        // === Selected age group definition (tables, number of Okno, limits) ===
+        public AgeGroupDefinition CurrentAgeGroup => AgeGroups.Get(SelectedRulebook);
+        public int TeamPicks => CurrentAgeGroup.TeamPicks;
+        public int InvPicks => CurrentAgeGroup.InvPicks;
+
+        private const string ChangeSelectionMessage =
+            "Zmena kategórie alebo vekovej skupiny vymaže všetky zvolené cviky. Pokračovať?";
+        private const string ChangeSelectionTitle = "Potvrdenie zmeny";
+
+        private bool ConfirmClearExerciseSelections(string message, string title)
         {
-            if (HasAnySelectedExercise())
+            if (!HasAnySelectedExercise())
+                return true;
+
+            var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            return result == MessageBoxResult.Yes;
+        }
+
+        // The ComboBox / radio button already shows the rejected value; re-read the old one after the
+        // current binding update has finished (a synchronous PropertyChanged would be ignored).
+        private void RestoreSelectionInUi(params string[] propertyNames)
+        {
+            Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
             {
-                var result = MessageBox.Show(
-                    "Zmena kategórie alebo vekovej skupiny vymaže všetkých 12 zvolených cvikov. Pokračovať?",
-                    "Potvrdenie zmeny",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
+                foreach (var name in propertyNames)
+                    OnPropertyChanged(name);
+            }));
+        }
 
-                if (result != MessageBoxResult.Yes)
-                    return;
-            }
-
-            for (int i = 0; i < ExerciseSlots.Count; i++)
-            {
-                var slot = ExerciseSlots[i];
-                FormData.ClearSlot(i);
-                slot.Image = _placeholderImage;
-                slot.ImagePath = null;
-                slot.X = 0;
-                slot.Y = 0;
-                slot.Rulebook = default;
-                slot.Category = default;
-                slot.Label = $"Okno {i + 1}";
-            }
-
+        // Empty Okno for the current age group (number of Okno can differ between age groups)
+        private void ResetExerciseSlots()
+        {
+            FormData.ResetSlots(CurrentAgeGroup.SlotCount);
+            SeedSlots();
             RecalculateExerciseSummary();
         }
 
@@ -118,7 +141,18 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             get => _selectedBackendCategory;
             set
             {
-                if (!SetProperty(ref _selectedBackendCategory, value)) return;
+                if (_selectedBackendCategory == value) return;
+
+                // Ask BEFORE changing anything: on "Nie" the old category stays selected
+                if (!ConfirmClearExerciseSelections(ChangeSelectionMessage, ChangeSelectionTitle))
+                {
+                    RestoreSelectionInUi(nameof(SelectedBackendCategory),
+                        nameof(IsWP), nameof(IsMP), nameof(IsMxP), nameof(IsWG), nameof(IsMG));
+                    return;
+                }
+
+                _selectedBackendCategory = value;
+                OnPropertyChanged();
 
                 OtherCatLabel = value.ToString();
 
@@ -129,7 +163,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 OnPropertyChanged(nameof(IsMG));
 
                 UpdatePdfCategoryFields();
-                ClearExerciseSelections();
+                ResetExerciseSlots();
             }
         }
 
@@ -139,7 +173,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public bool IsWG { get => SelectedBackendCategory == Category.WG; set { if (value) SelectedBackendCategory = Category.WG; } }
         public bool IsMG { get => SelectedBackendCategory == Category.MG; set { if (value) SelectedBackendCategory = Category.MG; } }
 
-        // === Main 12 slots (slotIndex 0..11) ===
+        // === Main slots / Okno (slotIndex 0..SlotCount-1, 12 for Do 10 / Do 14) ===
         public ObservableCollection<ExerciseCardVm> ExerciseSlots { get; } = new();
 
         // === Common header fields (mapped into backend FormData) ===
@@ -319,7 +353,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         public MainWindowViewModel()
         {
-            // Locate DB root (must contain do10_db / do14_db)
+            // Locate DB root (must contain an age-group folder like do10_db)
             var dbRoot = ResolveDbRoot();
             _repo = new ExerciseImageRepository(dbRoot);
 
@@ -327,10 +361,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             OpenSlotCommand = new RelayCommand(OpenSlot);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
-            ClearTableCommand = new RelayCommand(() => ClearExerciseSelections());
+            ClearTableCommand = new RelayCommand(() =>
+            {
+                if (ConfirmClearExerciseSelections("Naozaj chcete vymazať všetky zvolené cviky?", "Vyčistiť tabuľku"))
+                    ResetExerciseSlots();
+            });
 
-            SeedSlots();
-            RecalculateExerciseSummary();
+            ResetExerciseSlots();
 
             FormData.Discipline = SelectedRoutine.ToSlovakLabel();
             UpdatePdfCategoryFields();
@@ -339,7 +376,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private void SeedSlots()
         {
             ExerciseSlots.Clear();
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < FormData.SlotCount; i++)
             {
                 ExerciseSlots.Add(new ExerciseCardVm
                 {
@@ -368,12 +405,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             if (isUnsetSlot)
             {
-                if (otherCategoryCount >= 6 && invCategoryCount < 6)
+                if (otherCategoryCount >= TeamPicks && invCategoryCount < InvPicks)
                 {
                     forceIndividualTable = true;
                     lockTableToggle = true;
                 }
-                else if (invCategoryCount >= 6 && otherCategoryCount < 6)
+                else if (invCategoryCount >= InvPicks && otherCategoryCount < TeamPicks)
                 {
                     forceIndividualTable = false;
                     lockTableToggle = true;
@@ -435,10 +472,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         {
             var selectedExerciseCount = FormData.Slots.Count(s => s != null);
 
-            if (selectedExerciseCount < 12)
+            if (selectedExerciseCount < FormData.SlotCount)
             {
                 MessageBox.Show(
-                    "Na vytlačenie Súťažného plánu musíte zvoliť 12 cvičení.",
+                    $"Na vytlačenie Súťažného plánu musíte zvoliť {FormData.SlotCount} cvičení.",
                     "Chýbajúce cvičenia",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -494,17 +531,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         // === Age group check (issue #28) ===
         // Age counts by year: an athlete who turns N during the competition year counts as N,
         // even if the competition is before the birthday. Not a hard block, only a warning.
-        private static int? GetMaxAgeInYear(Rulebook rulebook) => rulebook switch
-        {
-            // Turning 10 during the year already means the higher category
-            Rulebook.DO_10_ROK => 9,
-            // TODO: limits for all other age groups (incl. new ones from #27) — owner wants every group checked
-            _ => null
-        };
-
+        // Limits come from AgeGroupDefinition.MaxAge (Do 10: 9 — turning 10 already means the higher category).
         private bool ConfirmAgeGroupOrPrintAnyway()
         {
-            var maxAge = GetMaxAgeInYear(SelectedRulebook);
+            var maxAge = CurrentAgeGroup.MaxAge;
             if (maxAge is null)
                 return true;
 
@@ -610,11 +640,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 {
                     var candidate = Path.Combine(dir.FullName, folderName);
 
-                    if (Directory.Exists(Path.Combine(candidate, "do10_db")) ||
-                        Directory.Exists(Path.Combine(candidate, "do14_db")))
-                    {
+                    if (AgeGroups.All.Any(g => Directory.Exists(Path.Combine(candidate, g.DbFolder))))
                         return candidate;
-                    }
                 }
             }
 
@@ -647,10 +674,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 !string.IsNullOrWhiteSpace(s.ImagePath) &&
                 s.Category != Category.Inv);
 
-            Obtaznost = FormData.Slots
-                .Where(s => s != null)
-                .Select(s => FormData.DifficultyRule(s!.Y, s!.X))
-                .Aggregate(0m, (acc, d) => acc + d);
+            Obtaznost = FormData.OverallDifficulty;
         }
 
         private int CountInvExercisesExcludingSlot(int slotIndex)

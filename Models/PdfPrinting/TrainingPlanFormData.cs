@@ -38,27 +38,39 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public string? AthleteBaseDob { get; set; }
 
         // ====== Selected images ======
-        // Slot index 0..11 => selection
-        private readonly ExerciseSlotSelection?[] _slots = new ExerciseSlotSelection?[12];
+        // Slot index 0..SlotCount-1 => selection. The template has 12 boxes, so 12 is the maximum.
+        public const int MaxSlots = 12;
+        private readonly ExerciseSlotSelection?[] _slots = new ExerciseSlotSelection?[MaxSlots];
 
-        // Difficulty rule can be swapped if needed
-        public Func<int /*rowY*/, int /*colX*/, decimal> DifficultyRule { get; set; } = DefaultDifficulty;
+        // Number of Okno of the selected age group
+        public int SlotCount { get; private set; } = MaxSlots;
 
-        public IReadOnlyList<ExerciseSlotSelection?> Slots => _slots;
+        public IReadOnlyList<ExerciseSlotSelection?> Slots => new ArraySegment<ExerciseSlotSelection?>(_slots, 0, SlotCount);
+
+        /// <summary>Clears all slots and sets the number of slots (age group changed or table cleared).</summary>
+        public void ResetSlots(int slotCount)
+        {
+            if (slotCount is < 1 or > MaxSlots) throw new ArgumentOutOfRangeException(nameof(slotCount));
+            Array.Clear(_slots);
+            SlotCount = slotCount;
+        }
 
         public void SetSlot(int slotIndex, Rulebook rulebook, Category category, int x, int y, string imagePath)
         {
-            if (slotIndex is < 0 or > 11) throw new ArgumentOutOfRangeException(nameof(slotIndex));
-            if (x is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(x));
-            if (y is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(y));
+            if (slotIndex < 0 || slotIndex >= SlotCount) throw new ArgumentOutOfRangeException(nameof(slotIndex));
+
+            var table = AgeGroups.Get(rulebook).GetTable(category);
+            if (x < 1 || x > table.Cols) throw new ArgumentOutOfRangeException(nameof(x));
+            if (y < 1 || y > table.Rows) throw new ArgumentOutOfRangeException(nameof(y));
+            if (table.IsEmpty(y, x)) throw new ArgumentException($"No exercise at row {y}, column {x}.");
             if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentException("ImagePath is required.", nameof(imagePath));
 
-            _slots[slotIndex] = new ExerciseSlotSelection(slotIndex, rulebook, category, x, y, imagePath);
+            _slots[slotIndex] = new ExerciseSlotSelection(slotIndex, rulebook, category, x, y, table.GetDifficulty(x), imagePath);
         }
 
         public void ClearSlot(int slotIndex)
         {
-            if (slotIndex is < 0 or > 11) throw new ArgumentOutOfRangeException(nameof(slotIndex));
+            if (slotIndex < 0 || slotIndex >= SlotCount) throw new ArgumentOutOfRangeException(nameof(slotIndex));
             _slots[slotIndex] = null;
         }
 
@@ -66,7 +78,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public decimal GetSlotDifficulty(int slotIndex)
         {
             var s = _slots[slotIndex] ?? throw new InvalidOperationException($"Slot {slotIndex} not set.");
-            return DifficultyRule(s.Y, s.X);
+            return s.Difficulty;
         }
 
         public string GetSlotExerciseId(int slotIndex)
@@ -77,9 +89,9 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         }
 
         public decimal OverallDifficulty =>
-            _slots.Where(s => s != null)
-                  .Select(s => DifficultyRule(s!.Y, s!.X))
-                  .Aggregate(0m, (acc, d) => acc + d);
+            Slots.Where(s => s != null)
+                 .Select(s => s!.Difficulty)
+                 .Aggregate(0m, (acc, d) => acc + d);
 
         // ====== Export payloads for PDF fill ======
 
@@ -125,7 +137,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             Add(AcroFieldNames.AthleteBaseDob, AthleteBaseDob);
 
             // Per-slot computed fields
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < SlotCount; i++)
             {
                 if (_slots[i] is null) continue;
 
@@ -145,8 +157,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         /// <summary>Image fields (Image1_af_image.N) -> path</summary>
         public List<(string fieldName, string imagePath)> ToImageFieldList()
         {
-            var list = new List<(string, string)>(12);
-            for (int i = 0; i < 12; i++)
+            var list = new List<(string, string)>(SlotCount);
+            for (int i = 0; i < SlotCount; i++)
             {
                 var s = _slots[i];
                 if (s is null) continue;
@@ -154,12 +166,6 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 list.Add((AcroFieldNames.ImageFields[i], s.ImagePath));
             }
             return list;
-        }
-
-        private static decimal DefaultDifficulty(int rowY, int colX)
-        {
-            // column 1..5 => 0.010..0.050
-            return colX * 0.01m;
         }
 
         public void SetSlotFromImagePath(int slotIndex, string imagePath)
@@ -181,22 +187,18 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 4) return false;
 
-            var prefix = parts[0].ToLowerInvariant(); // 10r / 14r
-            rulebook = prefix switch
-            {
-                "10r" => Rulebook.DO_10_ROK,
-                "14r" => Rulebook.DO_14_ROK,
-                _ => default
-            };
-            if (!Enum.IsDefined(rulebook)) return false;
+            var prefix = parts[0]; // 10r / 14r
+            var group = AgeGroups.All.FirstOrDefault(g => g.FilePrefix.Equals(prefix, StringComparison.OrdinalIgnoreCase));
+            if (group is null) return false;
+            rulebook = group.Rulebook;
 
             // Category token can be "mxp" or "m_x_p" depending on source
             // Everything between prefix and last two numbers is category
             var colToken = parts[^2];
             var rowToken = parts[^1];
 
-            if (!int.TryParse(colToken, out x)) return false; // 01..05
-            if (!int.TryParse(rowToken, out y)) return false; // 01..06
+            if (!int.TryParse(colToken, out x)) return false; // column
+            if (!int.TryParse(rowToken, out y)) return false; // row
 
             var catToken = string.Join("_", parts.Skip(1).Take(parts.Length - 3)).ToLowerInvariant();
 

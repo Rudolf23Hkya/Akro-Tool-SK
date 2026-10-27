@@ -228,9 +228,9 @@
                             <Run Text="{Binding OtherCatLabel}"/>
                             <Run Text=": "/>
                             <Run Text="{Binding OtherCatCount}"/>
-                            <Run Text="/6   Inv: "/>
+                            <Run Text="/"/><Run Text="{Binding TeamPicks, Mode=OneWay}"/><Run Text="   Inv: "/>
                             <Run Text="{Binding InvCount}"/>
-                            <Run Text="/6"/>
+                            <Run Text="/"/><Run Text="{Binding InvPicks, Mode=OneWay}"/>
                         </TextBlock>
                     </Border>
                 </StackPanel>

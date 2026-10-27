@@ -18,11 +18,7 @@
         }
         public static class RulebookExtensions
         {
-            public static string ToSlovakLabel(this Rulebook rb) => rb switch
-            {
-                Rulebook.DO_10_ROK => "Do 10 rokov",
-                Rulebook.DO_14_ROK => "Do 14 rokov",
-                _ => rb.ToString()
-            };
+            // Labels live in the age-group definitions (AgeGroups.cs)
+            public static string ToSlovakLabel(this Rulebook rb) => AgeGroups.Get(rb).Label;
         }
 }

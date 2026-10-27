@@ -20,6 +20,10 @@
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Cursor" Value="Arrow"/>
                 </Trigger>
+                <!-- No exercise at this position in the rulebook: keep the grid cell, show nothing -->
+                <DataTrigger Binding="{Binding IsEmptyCell}" Value="True">
+                    <Setter Property="Visibility" Value="Hidden"/>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -116,13 +120,13 @@
                         Click="Close_Click"/>
             </Grid>
 
-            <!-- 6 x 5 grid of exercises -->
+            <!-- Rows x columns grid of exercises (size comes from the table definition) -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding VisibleExercises}"
                               ItemTemplate="{StaticResource ExerciseImageButtonTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <UniformGrid Columns="5" Rows="6"/>
+                            <UniformGrid Columns="{Binding VisibleColumns}" Rows="{Binding VisibleRows}"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
