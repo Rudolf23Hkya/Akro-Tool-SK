@@ -59,7 +59,9 @@ namespace Atletika_SutaznyPlan_Generator.Models
         public int TeamPicks { get; init; }
         public int InvPicks { get; init; }
 
-        // Print-time age warning (issue #28): highest allowed age in the competition year; null = no check
+        // Print-time age warning (issue #28): allowed age in the competition year (competition year − birth year);
+        // null = no limit on that side
+        public int? MinAge { get; init; }
         public int? MaxAge { get; init; }
 
         // Until the owner's pictures exist, every exercise without a picture shows this one
@@ -102,9 +104,9 @@ namespace Atletika_SutaznyPlan_Generator.Models
         public static IReadOnlyList<AgeGroupDefinition> All { get; } = new[]
         {
             Do8(),
+            // Turning 10 (14) during the year already means the higher age group
             SixBySix(Rulebook.DO_10_ROK, "Do 10 rokov", "do10_db", "10r", maxAge: 9),
-            // TODO (Phase 5): age limits for Do 14, Do 8 and Od 8 – 14
-            SixBySix(Rulebook.DO_14_ROK, "Do 14 rokov", "do14_db", "14r", maxAge: null),
+            SixBySix(Rulebook.DO_14_ROK, "Do 14 rokov", "do14_db", "14r", maxAge: 13),
             Od8To14(),
             Individual(),
         };
@@ -160,6 +162,7 @@ namespace Atletika_SutaznyPlan_Generator.Models
                 InvTable = inv,
                 TeamPicks = 5,
                 InvPicks = 3,
+                MaxAge = 7,
                 MockImageRelativePath = MockImage
             };
         }
@@ -191,6 +194,8 @@ namespace Atletika_SutaznyPlan_Generator.Models
                 InvTable = inv,
                 TeamPicks = 5,
                 InvPicks = 3,
+                MinAge = 8,
+                MaxAge = 13,
                 MockImageRelativePath = MockImage
             };
         }

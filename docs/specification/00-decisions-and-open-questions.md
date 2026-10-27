@@ -31,6 +31,7 @@
 |---|---|---|
 | D14 | How the boxes of one Zvlášť Okno are connected (was Q5) | **Variant B — in order** (explained in §3): boxes are filled in routine order, the app writes the box numbers (`1`, `2.a`, `2.b`, `3`, …). The template's printed box numbers become text fields. |
 | D15 | Name of the button (was Q6) | **Zvlášť**, tooltip *Zvoliť cvičenie zvlášť pre každého pretekára*. |
+| D16 | Which cards the age check looks at (Phase 5.3) | **Only the cards the team uses** — pair: Top + Base, trio: + 1st Middle, quartet: all four. |
 
 Earlier decisions that still apply (from `CLAUDE.md`): difficulty `column × 0.01` is correct **for Do 10 / Do 14**;
 `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` stay empty on the PDF; unused athlete fields are not

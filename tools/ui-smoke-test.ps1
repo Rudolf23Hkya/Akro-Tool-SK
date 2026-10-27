@@ -11,6 +11,8 @@
   -Category the radio button text (WP, MP, MxP, WG, MG).
   -SeparateOkno fills these Okno with "Zvlášť" (one exercise per team member): every member takes the
   first tile of the row, the last member the second tile (MG: 0.010, 0.010, 0.010, 0.020 -> 0.013).
+  -BirthYears sets the year ComboBoxes, e.g. @{ Top = '2019'; Base = '2012'; Middle1 = '2000' }.
+  -AgeWarning: answer to the age warning before printing — PrintAnyway ("Tlačiť aj tak") or Ok (don't print).
 #>
 param(
     [string]$Exe = (Join-Path $PSScriptRoot '..\bin\Debug\net8.0-windows\Akro Tool SK.exe'),
@@ -19,10 +21,21 @@ param(
     [switch]$NoPrint,
     [string]$AgeGroup,
     [string]$Category,
-    [int[]]$SeparateOkno = @()
+    [int[]]$SeparateOkno = @(),
+    [hashtable]$BirthYears = @{},
+    [ValidateSet('PrintAnyway', 'Ok')][string]$AgeWarning = 'PrintAnyway'
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
+if (-not ('SmokeWin32' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class SmokeWin32 {
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
+'@
+}
 $AE   = [System.Windows.Automation.AutomationElement]
 $TS   = [System.Windows.Automation.TreeScope]
 $CT   = [System.Windows.Automation.ControlType]
@@ -97,6 +110,22 @@ try {
     }
     "enabled categories: $((FindAllOfType $main $CT::RadioButton | Where-Object { $_.Current.IsEnabled } | ForEach-Object { $_.Current.Name }) -join ', ')"
 
+    # Birth years: ComboBox 0 is the age group, then the cards Top, Middle (1st), Middle (2nd), Base
+    $cardCombos = @(FindAllOfType $main $CT::ComboBox | Select-Object -Skip 1)
+    $cardIndex = @{ Top = 0; Middle1 = 1; Middle2 = 2; Base = 3 }
+    foreach ($card in $BirthYears.Keys) {
+        $combo = $cardCombos[$cardIndex[$card]]
+        $combo.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+        Start-Sleep -Milliseconds 300
+        # The year list is virtualized: find the item through ItemContainerPattern and realize it first
+        $item = $combo.GetCurrentPattern([System.Windows.Automation.ItemContainerPattern]::Pattern).FindItemByProperty(
+            $null, $AE::NameProperty, [string]$BirthYears[$card])
+        try { $item.GetCurrentPattern([System.Windows.Automation.VirtualizedItemPattern]::Pattern).Realize() } catch { }
+        $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+        Start-Sleep -Milliseconds 300
+        "birth year $card = $($BirthYears[$card])"
+    }
+
     # Pick counts from the counter ("WP: 0/6   Inv: 0/6" or "Inv: 0/8")
     $counter = MainTexts | Where-Object { $_ -match '\d+/\d+' } | Select-Object -First 1
     $totals = @([regex]::Matches($counter, '\d+/(\d+)') | ForEach-Object { [int]$_.Groups[1].Value })
@@ -161,10 +190,30 @@ try {
         $pdf = Join-Path $OutDir $PdfName
         if (Test-Path $pdf) { Remove-Item $pdf }
         Click (FindButton $main 'Tlačiť')
-        $save = WaitFor { FindWindowByTitle 'Uložiť vyplnený PDF plán' } 'save dialog'
+        $save = WaitFor { FindWindowByTitle 'Uložiť vyplnený PDF plán|Upozornenie' } 'save dialog or age warning'
+
+        if ($save.Current.Name -match 'Upozornenie') {
+            Start-Sleep -Milliseconds 500
+            $warning = (FindAllOfType $save $CT::Text | ForEach-Object { $_.Current.Name }) -join ' / '
+            "age warning: $($warning -replace '\r?\n', ' | ')"
+            Shot '3_age_warning'
+            if ($AgeWarning -eq 'Ok') {
+                Click (FindButton $save 'OK')
+                Start-Sleep -Milliseconds 800
+                if (FindWindowByTitle 'Uložiť vyplnený PDF plán') { throw 'Save dialog opened after OK' }
+                "OK -> nothing printed"
+                "SMOKE TEST PASSED"
+                return
+            }
+            Click (FindButton $save 'Tlačiť aj tak')
+            $save = WaitFor { FindWindowByTitle 'Uložiť vyplnený PDF plán' } 'save dialog'
+        }
+        else { "no age warning" }
         # The common file dialog's name box is not reachable through UI Automation from here,
-        # but it has keyboard focus when the dialog opens: type the full path and press Enter.
+        # but it has keyboard focus when the dialog opens: activate the dialog, type the full path and press Enter.
         Start-Sleep -Milliseconds 1500
+        $hwnd = [SmokeWin32]::FindWindow([NullString]::Value, 'Uložiť vyplnený PDF plán')
+        if ($hwnd -ne [IntPtr]::Zero) { [SmokeWin32]::SetForegroundWindow($hwnd) | Out-Null; Start-Sleep -Milliseconds 300 }
         [System.Windows.Forms.SendKeys]::SendWait(($pdf -replace '([+^%~(){}\[\]])', '{$1}') + '{ENTER}')
         $done = WaitFor { FindWindowByTitle 'Export hotový|Chyba pri exporte' } 'export result' 30
         "export result: $($done.Current.Name)"
