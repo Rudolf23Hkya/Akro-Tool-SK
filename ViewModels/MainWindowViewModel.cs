@@ -29,7 +29,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
     public class MainWindowViewModel : ViewModelBase
     {
-        private const string PlaceholderImagePath = "assets/sgf_logo1.png";
         // === Placeholder (WPF Resource) ===
 
         private const string PlaceholderPackUri = "pack://application:,,,/assets/sgf_logo1.png";

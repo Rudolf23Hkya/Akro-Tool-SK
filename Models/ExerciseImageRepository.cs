@@ -80,10 +80,6 @@ namespace Atletika_SutaznyPlan_Generator.Models
             return null;
         }
 
-        // UI-friendly overload: x = column, y = row (matches your filename scheme _<col>_<row>.png)
-        public string? GetImagePathXY(Rulebook rb, Category category, int x, int y)
-            => GetImagePath(rb, category, row: y, col: x);
-
         public IReadOnlyList<TableCell> GetTable(Rulebook rb, Category category)
         {
             var table = AgeGroups.Get(rb).GetTable(category);

@@ -37,7 +37,10 @@ Earlier decisions that still apply (from `CLAUDE.md`): difficulty `column × 0.0
 `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` stay empty on the PDF; unused athlete fields are not
 greyed out; #6, #23 and the fullscreen idea from #5 are rejected.
 
-## 2. Assumptions made in this spec (please confirm or correct)
+## 2. Assumptions — all confirmed by the owner on 2026-10-28
+
+A1–A13 below are therefore decisions now; they are kept here with their original numbers because the phase
+documents and the code comments refer to them.
 
 | # | Assumption | Where it matters |
 |---|---|---|
