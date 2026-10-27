@@ -12,7 +12,19 @@ using Microsoft.Win32;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
-    public enum RoutineType { Combi, Tempo, Balans }
+    public enum RoutineType { Combi, Dynamic, Balance }
+
+    public static class RoutineTypeExtensions
+    {
+        // Same text in the app and on the printed sheet (issue #26)
+        public static string ToSlovakLabel(this RoutineType routine) => routine switch
+        {
+            RoutineType.Combi => "Zmiešaná zostava",
+            RoutineType.Dynamic => "Dynamická zostava",
+            RoutineType.Balance => "Balančná zostava",
+            _ => routine.ToString()
+        };
+    }
 
     public class MainWindowViewModel : ViewModelBase
     {
@@ -78,8 +90,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public ICommand ExportPdfCommand { get; }
         public ICommand ClearTableCommand { get; }
 
-        // === Routine (Combi/Tempo/Balans) maps into FormData.Discipline ===
-        private RoutineType _selectedRoutine = RoutineType.Balans;
+        // === Routine (Combi/Dynamic/Balance) maps into FormData.Discipline ===
+        private RoutineType _selectedRoutine = RoutineType.Balance;
         public RoutineType SelectedRoutine
         {
             get => _selectedRoutine;
@@ -87,17 +99,17 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             {
                 if (!SetProperty(ref _selectedRoutine, value)) return;
                 OnPropertyChanged(nameof(IsCombi));
-                OnPropertyChanged(nameof(IsTempo));
-                OnPropertyChanged(nameof(IsBalans));
+                OnPropertyChanged(nameof(IsDynamic));
+                OnPropertyChanged(nameof(IsBalance));
 
                 // backend priority: store as string
-                FormData.Discipline = _selectedRoutine.ToString();
+                FormData.Discipline = _selectedRoutine.ToSlovakLabel();
             }
         }
 
         public bool IsCombi { get => SelectedRoutine == RoutineType.Combi; set { if (value) SelectedRoutine = RoutineType.Combi; } }
-        public bool IsTempo { get => SelectedRoutine == RoutineType.Tempo; set { if (value) SelectedRoutine = RoutineType.Tempo; } }
-        public bool IsBalans { get => SelectedRoutine == RoutineType.Balans; set { if (value) SelectedRoutine = RoutineType.Balans; } }
+        public bool IsDynamic { get => SelectedRoutine == RoutineType.Dynamic; set { if (value) SelectedRoutine = RoutineType.Dynamic; } }
+        public bool IsBalance { get => SelectedRoutine == RoutineType.Balance; set { if (value) SelectedRoutine = RoutineType.Balance; } }
 
         // === Backend Category selection (ONE shared selection across WP/MP/MxP/WG/MG) ===
         private Category _selectedBackendCategory = Category.WP;
@@ -165,23 +177,11 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             set { FormData.ClubName = value; OnPropertyChanged(); }
         }
 
-        // === Athlete fields (UI stays DateTime?, backend stays string?) ===
-        private static readonly CultureInfo SlovakCulture = new("sk-SK");
-
-        private static DateTime? ParseDob(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return null;
-
-            string[] formats = { "d.M.yyyy", "dd.MM.yyyy", "d.M.yy", "dd.MM.yy" };
-
-            return DateTime.TryParseExact(value, formats, SlovakCulture, DateTimeStyles.None, out var parsed)
-                ? parsed
-                : null;
-        }
-
-        private static string? FormatDob(DateTime? value)
-            => value?.ToString("d.M.yyyy", SlovakCulture);
+        // === Athlete fields (only the birth year is entered and printed, issue #28) ===
+        // First item is empty so a chosen year can be cleared again.
+        public ObservableCollection<string> BirthYearOptions { get; } = new(
+            new[] { "" }.Concat(
+                Enumerable.Range(0, 61).Select(i => (DateTime.Now.Year - i).ToString(CultureInfo.InvariantCulture))));
 
         public string TopName
         {
@@ -194,14 +194,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             }
         }
 
-        public DateTime? TopBirth
+        public string TopBirthYear
         {
-            get => ParseDob(FormData.AthleteTopDob);
+            get => FormData.AthleteTopDob ?? "";
             set
             {
-                var formatted = FormatDob(value);
-                if (FormData.AthleteTopDob == formatted) return;
-                FormData.AthleteTopDob = formatted;
+                if (FormData.AthleteTopDob == value) return;
+                FormData.AthleteTopDob = value;
                 OnPropertyChanged();
             }
         }
@@ -217,14 +216,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             }
         }
 
-        public DateTime? Middle1Birth
+        public string Middle1BirthYear
         {
-            get => ParseDob(FormData.AthleteMiddle1Dob);
+            get => FormData.AthleteMiddle1Dob ?? "";
             set
             {
-                var formatted = FormatDob(value);
-                if (FormData.AthleteMiddle1Dob == formatted) return;
-                FormData.AthleteMiddle1Dob = formatted;
+                if (FormData.AthleteMiddle1Dob == value) return;
+                FormData.AthleteMiddle1Dob = value;
                 OnPropertyChanged();
             }
         }
@@ -240,14 +238,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             }
         }
 
-        public DateTime? Middle2Birth
+        public string Middle2BirthYear
         {
-            get => ParseDob(FormData.AthleteMiddle2Dob);
+            get => FormData.AthleteMiddle2Dob ?? "";
             set
             {
-                var formatted = FormatDob(value);
-                if (FormData.AthleteMiddle2Dob == formatted) return;
-                FormData.AthleteMiddle2Dob = formatted;
+                if (FormData.AthleteMiddle2Dob == value) return;
+                FormData.AthleteMiddle2Dob = value;
                 OnPropertyChanged();
             }
         }
@@ -263,14 +260,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             }
         }
 
-        public DateTime? BaseBirth
+        public string BaseBirthYear
         {
-            get => ParseDob(FormData.AthleteBaseDob);
+            get => FormData.AthleteBaseDob ?? "";
             set
             {
-                var formatted = FormatDob(value);
-                if (FormData.AthleteBaseDob == formatted) return;
-                FormData.AthleteBaseDob = formatted;
+                if (FormData.AthleteBaseDob == value) return;
+                FormData.AthleteBaseDob = value;
                 OnPropertyChanged();
             }
         }
@@ -336,7 +332,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             SeedSlots();
             RecalculateExerciseSummary();
 
-            FormData.Discipline = SelectedRoutine.ToString();
+            FormData.Discipline = SelectedRoutine.ToSlovakLabel();
             UpdatePdfCategoryFields();
         }
 
@@ -450,6 +446,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 return;
             }
 
+            if (!ConfirmAgeGroupOrPrintAnyway())
+                return;
+
             try
             {
                 var templatePdfPath = GetTemplatePdfPath();
@@ -492,6 +491,57 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     MessageBoxImage.Error);
             }
         }
+        // === Age group check (issue #28) ===
+        // Age counts by year: an athlete who turns N during the competition year counts as N,
+        // even if the competition is before the birthday. Not a hard block, only a warning.
+        private static int? GetMaxAgeInYear(Rulebook rulebook) => rulebook switch
+        {
+            // Turning 10 during the year already means the higher category
+            Rulebook.DO_10_ROK => 9,
+            // TODO: limits for all other age groups (incl. new ones from #27) — owner wants every group checked
+            _ => null
+        };
+
+        private bool ConfirmAgeGroupOrPrintAnyway()
+        {
+            var maxAge = GetMaxAgeInYear(SelectedRulebook);
+            if (maxAge is null)
+                return true;
+
+            var competitionYear = DateTime.Now.Year;
+
+            var athletes = new (string role, string? name, string? birthYear)[]
+            {
+                ("Top", FormData.AthleteTopName, FormData.AthleteTopDob),
+                ("Middle", FormData.AthleteMiddle1Name, FormData.AthleteMiddle1Dob),
+                ("Middle", FormData.AthleteMiddle2Name, FormData.AthleteMiddle2Dob),
+                ("Base", FormData.AthleteBaseName, FormData.AthleteBaseDob),
+            };
+
+            var tooOld = athletes
+                .Where(a => int.TryParse(a.birthYear, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
+                            && competitionYear - year > maxAge)
+                .Select(a => string.IsNullOrWhiteSpace(a.name)
+                    ? $"{a.role} ({a.birthYear})"
+                    : $"{a.name} – {a.role} ({a.birthYear})")
+                .ToList();
+
+            if (tooOld.Count == 0)
+                return true;
+
+            var message =
+                $"Rok narodenia týchto pretekárov nezodpovedá vekovej skupine {SelectedRulebook.ToSlovakLabel()}:\n\n" +
+                string.Join("\n", tooOld) +
+                $"\n\nV roku {competitionYear} dovŕšia {maxAge + 1} alebo viac rokov.";
+
+            var dialog = new Views.AgeWarningDialog(message)
+            {
+                Owner = Application.Current?.MainWindow
+            };
+
+            return dialog.ShowDialog() == true;
+        }
+
         private static string GetTemplatePdfPath()
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Cvicebny-plan_Template.pdf");

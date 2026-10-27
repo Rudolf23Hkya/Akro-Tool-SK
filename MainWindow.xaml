@@ -267,16 +267,16 @@
                               Padding="14">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="10"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <RadioButton Content="Combi"  Margin="0,6,0,0" IsChecked="{Binding IsCombi}"/>
-                                <RadioButton Content="Dynamic"  Margin="0,6,0,0" IsChecked="{Binding IsTempo}"/>
-                                <RadioButton Content="Balance" Margin="0,6,0,0" IsChecked="{Binding IsBalans}"/>
+                                <RadioButton Content="Zmiešaná zostava"  Margin="0,6,0,0" IsChecked="{Binding IsCombi}"/>
+                                <RadioButton Content="Dynamická zostava"  Margin="0,6,0,0" IsChecked="{Binding IsDynamic}"/>
+                                <RadioButton Content="Balančná zostava" Margin="0,6,0,0" IsChecked="{Binding IsBalance}"/>
                             </StackPanel>
 
                             <!-- Separator (soft + rounded) -->
@@ -317,10 +317,12 @@
                             <Setter Property="Padding" Value="6,3"/>
                         </Style>
 
-                        <Style x:Key="DateStyle" TargetType="DatePicker">
+                        <Style x:Key="BirthYearStyle" TargetType="ComboBox">
                             <Setter Property="Height" Value="28"/>
                             <Setter Property="Margin" Value="0,6,0,8"/>
                             <Setter Property="Padding" Value="6,3"/>
+                            <Setter Property="ItemsSource" Value="{Binding BirthYearOptions}"/>
+                            <Setter Property="ToolTip" Value="Rok narodenia"/>
                         </Style>
                     </Grid.Resources>
 
@@ -329,7 +331,7 @@
                             <StackPanel>
                                 <TextBlock Text="Top" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <TextBox Style="{StaticResource NameBoxStyle}" Text="{Binding TopName, UpdateSourceTrigger=PropertyChanged}"/>
-                                <DatePicker Style="{StaticResource DateStyle}" SelectedDate="{Binding TopBirth}"/>
+                                <ComboBox Style="{StaticResource BirthYearStyle}" SelectedItem="{Binding TopBirthYear}"/>
                             </StackPanel>
                         </Border>
 
@@ -337,7 +339,7 @@
                             <StackPanel>
                                 <TextBlock Text="Middle" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <TextBox Style="{StaticResource NameBoxStyle}" Text="{Binding Middle1Name, UpdateSourceTrigger=PropertyChanged}"/>
-                                <DatePicker Style="{StaticResource DateStyle}" SelectedDate="{Binding Middle1Birth}"/>
+                                <ComboBox Style="{StaticResource BirthYearStyle}" SelectedItem="{Binding Middle1BirthYear}"/>
                             </StackPanel>
                         </Border>
 
@@ -345,7 +347,7 @@
                             <StackPanel>
                                 <TextBlock Text="Middle" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <TextBox Style="{StaticResource NameBoxStyle}" Text="{Binding Middle2Name, UpdateSourceTrigger=PropertyChanged}"/>
-                                <DatePicker Style="{StaticResource DateStyle}" SelectedDate="{Binding Middle2Birth}"/>
+                                <ComboBox Style="{StaticResource BirthYearStyle}" SelectedItem="{Binding Middle2BirthYear}"/>
                             </StackPanel>
                         </Border>
 
@@ -353,7 +355,7 @@
                             <StackPanel>
                                 <TextBlock Text="Base" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <TextBox Style="{StaticResource NameBoxStyle}" Text="{Binding BaseName, UpdateSourceTrigger=PropertyChanged}"/>
-                                <DatePicker Style="{StaticResource DateStyle}" SelectedDate="{Binding BaseBirth}"/>
+                                <ComboBox Style="{StaticResource BirthYearStyle}" SelectedItem="{Binding BaseBirthYear}"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
