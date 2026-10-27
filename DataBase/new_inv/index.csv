@@ -1,0 +1,49 @@
+﻿id,row,column,difficulty,name,file
+A1,A,1,0.01,Hlboký predklon s vystretými nohami,A1.png
+A2,A,2,0.02,Sed roznožený čelne s predklonom,A2.png
+A3,A,3,0.03,Pozdĺžny sed,A3.png
+A4,A,4,0.04,Sed roznožený čelne,A4.png
+A5,A,5,0.05,Stoj na hrudníku,A5.png
+A6,A,6,0.06,Pozdĺžny roznožený sed so záklonom,A6.png
+B1,B,1,0.01,Záklon v stoji na špičkách,B1.png
+B2,B,2,0.02,Váha,B2.png
+B3,B,3,0.03,Unoženie s úchopom,B3.png
+B4,B,4,0.04,Predná ihla,B4.png
+B5,B,5,0.05,Stoj na jednej nohe s vystretou nohou vzad,B5.png
+B6,B,6,0.06,Ihla s trupom pri nohe,B6.png
+C1,C,1,0.01,Rovnováha na rukách s oporou kolien o paže,C1.png
+C2,C,2,0.02,Páka v stoji na rukách,C2.png
+C3,C,3,0.03,Roznžený stoj na rukách,C3.png
+C4,C,4,0.04,Statický lež na bruchu,C4.png
+C5,C,5,0.05,Roznožný stoj s výdržou 3s do stoja na rukách,C5.png
+C6,C,6,0.06,Stoj na rukách v ruskej páke,C6.png
+D1,D,1,0.01,Podrep s rukami vpredu,D1.png
+D2,D,2,0.02,Mostík,D2.png
+D3,D,3,0.03,Premet vpred na dve nohy,D3.png
+D4,D,4,0.04,Premet vzad alebo vpred,D4.png
+D5,D,5,0.05,Premet vzad zo sedu,D5.png
+D6,D,6,0.06,Premet vpred cez lakte alebo ruku do pozdĺžneho sedu,D6.png
+E1,E,1,0.01,Kotúľ vpred alebo vzad,E1.png
+E2,E,2,0.02,Premet bokom,E2.png
+E3,E,3,0.03,Premet bokom na jednej ruke,E3.png
+E4,E,4,0.04,Rondat,E4.png
+E5,E,5,0.05,Flik,E5.png
+E6,E,6,0.06,Salto vpred/vzad,E6.png
+F1,F,1,0.01,Kotúľ + výskok + premet bokom,F1.png
+F2,F,2,0.02,Premet bokom + premet na jednej ruke,F2.png
+F3,F,3,0.03,Premet vpred + rondat,F3.png
+F4,F,4,0.04,Rondat + obrat o 180° + premet bokom,F4.png
+F5,F,5,0.05,Rondat + flik,F5.png
+F6,F,6,0.06,Rondat + salto vpred/vzad,F6.png
+G1,G,1,0.01,Stoj na hlave,G1.png
+G2,G,2,0.02,Nášvih do stoja na rukách,G2.png
+G3,G,3,0.03,Nášvih do stoja na rukách + kotúľ,G3.png
+G4,G,4,0.04,Obrat v stoji na rukách o 180°,G4.png
+G5,G,5,0.05,Stojka zo striešky,G5.png
+G6,G,6,0.06,Roznožný stoj na rukách do stojky,G6.png
+H1,H,1,0.01,Čertík,H1.png
+H2,H,2,0.02,Nožnicový skok,H2.png
+H3,H,3,0.03,Skok rozkročmo,H3.png
+H4,H,4,0.04,Obrat 360°,H4.png
+H5,H,5,0.05,Skok do šnúry <135°,H5.png
+H6,H,6,0.06,Skok do šnúry,H6.png
