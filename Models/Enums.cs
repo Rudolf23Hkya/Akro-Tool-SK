@@ -4,7 +4,10 @@
         public enum Rulebook
         {
             DO_10_ROK,
-            DO_14_ROK
+            DO_14_ROK,
+            DO_8_ROK,
+            OD_8_14_ROK,
+            INDIVIDUAL
         }
 
         public enum Category

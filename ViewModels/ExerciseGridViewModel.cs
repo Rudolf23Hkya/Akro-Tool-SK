@@ -19,14 +19,18 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public Category Category { get; private set; }
         public int SlotIndex { get; }
 
-        private readonly ExerciseTable _teamTable;
+        // null = no team table (Individuálna zostava); null Inv table = age group without Inv
+        private readonly ExerciseTable? _teamTable;
         private readonly ExerciseTable? _invTable;
 
         private readonly HashSet<int> _blockedInvRows;
         private readonly HashSet<int> _blockedOtherRows;
         private readonly bool _lockTableToggle;
 
-        public bool CanToggleIndividual => !_lockTableToggle && _invTable != null;
+        public bool CanToggleIndividual => !_lockTableToggle && IsTableToggleVisible;
+
+        // Only an age group with both tables needs the toggle
+        public bool IsTableToggleVisible => _teamTable != null && _invTable != null;
 
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
         public ObservableCollection<ExerciseCardVm> IndividualExercises { get; } = new();
@@ -34,7 +38,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public ObservableCollection<ExerciseCardVm> VisibleExercises
             => ShowIndividualTable ? IndividualExercises : Exercises;
 
-        private ExerciseTable VisibleTable => ShowIndividualTable ? _invTable! : _teamTable;
+        private ExerciseTable VisibleTable => ShowIndividualTable ? _invTable! : _teamTable!;
 
         // Grid size of the shown table
         public int VisibleRows => VisibleTable.Rows;
@@ -49,7 +53,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (_lockTableToggle && value != _showIndividualTable)
                     return;
 
-                if (value && _invTable is null)
+                if ((value && _invTable is null) || (!value && _teamTable is null))
                     return;
 
                 if (SetProperty(ref _showIndividualTable, value))
@@ -108,10 +112,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             _lockTableToggle = lockTableToggle;
 
             var ageGroup = AgeGroups.Get(rulebook);
-            _teamTable = ageGroup.GetTable(category);
+            _teamTable = ageGroup.IsCategoryAllowed(category) ? ageGroup.GetTable(category) : null;
             _invTable = ageGroup.InvTable;
 
-            _showIndividualTable = startWithIndividualTable && _invTable != null;
+            _showIndividualTable = _teamTable is null || (startWithIndividualTable && _invTable != null);
 
             ExerciseClickedCommand = new RelayCommand(ExerciseClicked);
 
@@ -120,7 +124,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         private void LoadFromRepository()
         {
-            LoadTableInto(Exercises, Category);
+            if (_teamTable != null)
+                LoadTableInto(Exercises, Category);
             if (_invTable != null)
                 LoadTableInto(IndividualExercises, Atletika_SutaznyPlan_Generator.Models.Category.Inv);
 

@@ -62,7 +62,16 @@ namespace Atletika_SutaznyPlan_Generator.Models
         // Print-time age warning (issue #28): highest allowed age in the competition year; null = no check
         public int? MaxAge { get; init; }
 
+        // Until the owner's pictures exist, every exercise without a picture shows this one
+        // (relative to the DataBase folder); null = show the SGF placeholder instead.
+        public string? MockImageRelativePath { get; init; }
+
         public int SlotCount => TeamPicks + InvPicks;
+
+        // Individuálna zostava: one competitor, only the Inv table, no category choice
+        public bool HasTeamTables => TeamTables.Count > 0;
+
+        public bool IsCategoryAllowed(Category category) => TeamTables.ContainsKey(category);
 
         public ExerciseTable GetTable(Category category)
         {
@@ -83,11 +92,21 @@ namespace Atletika_SutaznyPlan_Generator.Models
         // Do 10 / Do 14: difficulty = column × 0.01 (confirmed by the owner)
         private static readonly decimal[] ColumnTimesHundredth = { 0.01m, 0.02m, 0.03m, 0.04m, 0.05m };
 
+        // Inv table of Do 8 and Od 8 – 14: columns 1..7 = 0.01..0.07, column 8 = 0.07 too
+        private static readonly decimal[] InvColumns3x8 = { 0.01m, 0.02m, 0.03m, 0.04m, 0.05m, 0.06m, 0.07m, 0.07m };
+
+        // Owner's choice (issue #27): "do 10 rokov, mxp 1-1" stands in for every missing picture
+        private const string MockImage = "do10_db/m_x_p/10r_mxp_01_01.png";
+
+        // List order = order in the age-group ComboBox
         public static IReadOnlyList<AgeGroupDefinition> All { get; } = new[]
         {
+            Do8(),
             SixBySix(Rulebook.DO_10_ROK, "Do 10 rokov", "do10_db", "10r", maxAge: 9),
-            // TODO (Phase 5): age limit for Do 14 rokov
+            // TODO (Phase 5): age limits for Do 14, Do 8 and Od 8 – 14
             SixBySix(Rulebook.DO_14_ROK, "Do 14 rokov", "do14_db", "14r", maxAge: null),
+            Od8To14(),
+            Individual(),
         };
 
         public static AgeGroupDefinition Get(Rulebook rulebook) => All.First(g => g.Rulebook == rulebook);
@@ -115,6 +134,81 @@ namespace Atletika_SutaznyPlan_Generator.Models
                 TeamPicks = 6,
                 InvPicks = 6,
                 MaxAge = maxAge
+            };
+        }
+
+        // Do 8 rokov: pairs only (WP / MP / MxP share the Duo table), 5 + 3 picks
+        private static AgeGroupDefinition Do8()
+        {
+            var duo = new ExerciseTable("duo", "Duo", rows: 5,
+                new[] { 0.01m, 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m });
+            var inv = new ExerciseTable("inv", "Inv", rows: 3, InvColumns3x8,
+                emptyCells: new[] { (1, 7), (1, 8), (2, 7), (2, 8) });
+
+            return new AgeGroupDefinition
+            {
+                Rulebook = Rulebook.DO_8_ROK,
+                Label = "Do 8 rokov",
+                DbFolder = "do8_db",
+                FilePrefix = "8r",
+                TeamTables = new Dictionary<Category, ExerciseTable>
+                {
+                    [Category.WP] = duo,
+                    [Category.MP] = duo,
+                    [Category.MxP] = duo,
+                },
+                InvTable = inv,
+                TeamPicks = 5,
+                InvPicks = 3,
+                MockImageRelativePath = MockImage
+            };
+        }
+
+        // Od 8 – 14 rokov: Pár (WP / MP / MxP), Trojica (WG), Štvorica (MG), 5 + 3 picks
+        private static AgeGroupDefinition Od8To14()
+        {
+            var par = new ExerciseTable("par", "Pár", rows: 5,
+                new[] { 0.01m, 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m, 0.03m },
+                emptyCells: new[] { (4, 6), (5, 6) });
+            var groupColumns = new[] { 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m };
+            var inv = new ExerciseTable("inv", "Inv", rows: 3, InvColumns3x8,
+                emptyCells: new[] { (1, 8), (2, 8) });
+
+            return new AgeGroupDefinition
+            {
+                Rulebook = Rulebook.OD_8_14_ROK,
+                Label = "Od 8 – 14 rokov",
+                DbFolder = "od8_14_db",
+                FilePrefix = "814r",
+                TeamTables = new Dictionary<Category, ExerciseTable>
+                {
+                    [Category.WP] = par,
+                    [Category.MP] = par,
+                    [Category.MxP] = par,
+                    [Category.WG] = new ExerciseTable("trojica", "Trojica", rows: 5, groupColumns),
+                    [Category.MG] = new ExerciseTable("stvorica", "Štvorica", rows: 5, groupColumns),
+                },
+                InvTable = inv,
+                TeamPicks = 5,
+                InvPicks = 3,
+                MockImageRelativePath = MockImage
+            };
+        }
+
+        // Individuálna zostava: one competitor, one 8×6 table (handled as the Inv table), 8 picks, no age check
+        private static AgeGroupDefinition Individual()
+        {
+            return new AgeGroupDefinition
+            {
+                Rulebook = Rulebook.INDIVIDUAL,
+                Label = "Individuálna zostava",
+                DbFolder = "individual_db",
+                FilePrefix = "ir",
+                InvTable = new ExerciseTable("individual", "Inv", rows: 8,
+                    new[] { 0.01m, 0.02m, 0.03m, 0.04m, 0.05m, 0.06m }),
+                TeamPicks = 0,
+                InvPicks = 8,
+                MockImageRelativePath = MockImage
             };
         }
     }

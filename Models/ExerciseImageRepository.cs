@@ -64,8 +64,20 @@ namespace Atletika_SutaznyPlan_Generator.Models
 
         public string? GetImagePath(Rulebook rb, Category category, int row, int col)
         {
-            var table = AgeGroups.Get(rb).GetTable(category);
-            return _index.TryGetValue((rb, table.Id, row, col), out var path) ? path : null;
+            var group = AgeGroups.Get(rb);
+            var table = group.GetTable(category);
+            if (_index.TryGetValue((rb, table.Id, row, col), out var path))
+                return path;
+
+            // Picture not delivered yet: a real file always wins, the mock only fills the gaps
+            if (group.MockImageRelativePath != null && table.HasExercise(row, col))
+            {
+                var mock = Path.GetFullPath(Path.Combine(_dbRoot, group.MockImageRelativePath));
+                if (File.Exists(mock))
+                    return mock;
+            }
+
+            return null;
         }
 
         // UI-friendly overload: x = column, y = row (matches your filename scheme _<col>_<row>.png)

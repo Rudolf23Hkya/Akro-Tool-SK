@@ -48,6 +48,17 @@ Depends on: Phase 1.
 - Owner exports pictures into the confirmed folders (D10).
 - Check: the app lists no mock for any non-empty cell; spot-check each table in the picker.
 
+## Implementation notes (2026-10-27)
+- Parts 2.1–2.6 done; 2.7 waits for the owner's pictures.
+- Individuálna zostava is modelled as an age group with **only an Inv table** (0 team + 8 Inv picks), so the existing
+  Inv logic (row rule, counting) is reused. Counter shows `Inv: n/8` (not `Ind.: n/8`), matching `category1 = Inv`.
+- The ComboBox order comes from `AgeGroups.All`; the enum values were appended (order of the enum doesn't matter).
+- The counter is now one text (`PickCounterText`), so the spacing changed slightly: `WP: 2/6   Inv: 1/6`.
+- Picker grid is top-aligned so tables with few rows don't spread over the whole window.
+- Age limits for the new groups are not set yet (Phase 5); Do 10 keeps its warning.
+- Verified on the Windows host with `tools/ui-smoke-test.ps1` for Do 8 (WP), Od 8 – 14 (WP, MG), Individuálna zostava
+  and Do 10 (PDF still pixel-identical to the original); WG → Do 8 falls back to WP.
+
 ## Acceptance
 - Each new group: picker shows the right size, labels show the right column values (e.g. Do 8 Duo col 4 → `0.020`),
   empty cells are not clickable, row rule works, counters correct, 8 picks → PDF prints 8 boxes and the right total.

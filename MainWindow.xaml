@@ -224,14 +224,8 @@
                             Padding="13,6">
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   VerticalAlignment="Center">
-                            <Run Text="{Binding OtherCatLabel}"/>
-                            <Run Text=": "/>
-                            <Run Text="{Binding OtherCatCount}"/>
-                            <Run Text="/"/><Run Text="{Binding TeamPicks, Mode=OneWay}"/><Run Text="   Inv: "/>
-                            <Run Text="{Binding InvCount}"/>
-                            <Run Text="/"/><Run Text="{Binding InvPicks, Mode=OneWay}"/>
-                        </TextBlock>
+                                   VerticalAlignment="Center"
+                                   Text="{Binding PickCounterText}"/>
                     </Border>
                 </StackPanel>
 
@@ -274,9 +268,9 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <RadioButton Content="Zmiešaná zostava"  Margin="0,6,0,0" IsChecked="{Binding IsCombi}"/>
-                                <RadioButton Content="Dynamická zostava"  Margin="0,6,0,0" IsChecked="{Binding IsDynamic}"/>
-                                <RadioButton Content="Balančná zostava" Margin="0,6,0,0" IsChecked="{Binding IsBalance}"/>
+                                <RadioButton Content="Zmiešaná zostava"  Margin="0,6,0,0" IsChecked="{Binding IsCombi}" IsEnabled="{Binding IsDisciplineEnabled}"/>
+                                <RadioButton Content="Dynamická zostava"  Margin="0,6,0,0" IsChecked="{Binding IsDynamic}" IsEnabled="{Binding IsDisciplineEnabled}"/>
+                                <RadioButton Content="Balančná zostava" Margin="0,6,0,0" IsChecked="{Binding IsBalance}" IsEnabled="{Binding IsDisciplineEnabled}"/>
                             </StackPanel>
 
                             <!-- Separator (soft + rounded) -->
@@ -286,14 +280,14 @@
                                     Style="{StaticResource SoftSeparatorStyle}"/>
 
                             <StackPanel Grid.Column="2">
-                                <RadioButton Content="WP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWP}"/>
-                                <RadioButton Content="MP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMP}"/>
-                                <RadioButton Content="MxP" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMxP}"/>
+                                <RadioButton Content="WP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWP}" IsEnabled="{Binding IsWPEnabled}"/>
+                                <RadioButton Content="MP"  Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMP}" IsEnabled="{Binding IsMPEnabled}"/>
+                                <RadioButton Content="MxP" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMxP}" IsEnabled="{Binding IsMxPEnabled}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="3">
-                                <RadioButton Content="WG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWG}"/>
-                                <RadioButton Content="MG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMG}"/>
+                                <RadioButton Content="WG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsWG}" IsEnabled="{Binding IsWGEnabled}"/>
+                                <RadioButton Content="MG" Margin="0,6,0,0" GroupName="CategoryGroup" IsChecked="{Binding IsMG}" IsEnabled="{Binding IsMGEnabled}"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
