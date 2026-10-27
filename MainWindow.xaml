@@ -18,6 +18,20 @@
 
     <Window.Resources>
         <conv:RulebookToSlovakLabelConverter x:Key="RulebookToSlovakLabelConverter" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
+        <!-- ‹ › on a Zvlášť Okno -->
+        <Style x:Key="SlotArrowButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="Padding" Value="0,-4,0,0"/>
+            <Setter Property="Background" Value="#E6FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#1F5FA8"/>
+            <Setter Property="Foreground" Value="#1F5FA8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
     </Window.Resources>
 
     <!-- Outer frame (now square, no clipping) -->
@@ -214,7 +228,7 @@
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center">
                             <Run Text="Obť.: "/>
-                            <Run Text="{Binding Obtaznost, StringFormat={}{0:0.00}}"/>
+                            <Run Text="{Binding Obtaznost, StringFormat={}{0:0.000}}"/>
                         </TextBlock>
                     </Border>
 
@@ -375,10 +389,10 @@
 
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
+                                <Grid Margin="10">
                                 <Button Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
-                                    Margin="10"
                                     Cursor="Hand"
                                     Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}">
@@ -411,6 +425,67 @@
                                         </Grid>
                                     </Border>
                                 </Button>
+
+                                <!-- Overlays on the picture area. Siblings of the tile button (not nested),
+                                     so clicking them never opens the normal picker. -->
+                                <Grid Margin="1">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="34"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Zvlášť: who performs the exercise shown right now -->
+                                    <Border HorizontalAlignment="Center"
+                                            VerticalAlignment="Top"
+                                            Margin="0,6,0,0"
+                                            Padding="8,2"
+                                            CornerRadius="4"
+                                            Background="#E6FFFFFF"
+                                            BorderBrush="#1F5FA8"
+                                            BorderThickness="1"
+                                            IsHitTestVisible="False"
+                                            Visibility="{Binding IsSeparate, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Text="{Binding PerformerText}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#1F5FA8"/>
+                                    </Border>
+
+                                    <Button Content="‹"
+                                            HorizontalAlignment="Left"
+                                            Margin="4,0,0,0"
+                                            Style="{StaticResource SlotArrowButtonStyle}"
+                                            AutomationProperties.Name="Predchádzajúce cvičenie"
+                                            Command="{Binding DataContext.ShowPreviousExerciseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsSeparate, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <Button Content="›"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,0,4,0"
+                                            Style="{StaticResource SlotArrowButtonStyle}"
+                                            AutomationProperties.Name="Ďalšie cvičenie"
+                                            Command="{Binding DataContext.ShowNextExerciseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsSeparate, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <!-- Empty Okno in a team age group: one exercise per team member (issue #29) -->
+                                    <Button Content="Zvlášť"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,6,6"
+                                            Padding="10,3"
+                                            FontWeight="SemiBold"
+                                            Background="White"
+                                            BorderBrush="#1F5FA8"
+                                            Foreground="#1F5FA8"
+                                            Cursor="Hand"
+                                            ToolTip="Zvoliť cvičenie zvlášť pre každého pretekára"
+                                            Command="{Binding DataContext.SeparateSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding CanSeparate, Converter={StaticResource BoolToVisibility}}"/>
+                                </Grid>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

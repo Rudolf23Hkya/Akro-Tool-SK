@@ -27,6 +27,13 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private readonly HashSet<int> _blockedOtherRows;
         private readonly bool _lockTableToggle;
 
+        // Zvlášť, members 2..n: only the row chosen by the first member is selectable
+        private readonly int? _onlyRow;
+
+        // Zvlášť: who is choosing right now, e.g. "Ján Novák (Base) – 1/2"; empty otherwise
+        public string Subtitle { get; }
+        public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
+
         public bool CanToggleIndividual => !_lockTableToggle && IsTableToggleVisible;
 
         // Only an age group with both tables needs the toggle
@@ -100,8 +107,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             IEnumerable<int>? blockedInvRows = null,
             IEnumerable<int>? blockedOtherRows = null,
             bool startWithIndividualTable = false,
-            bool lockTableToggle = false)
+            bool lockTableToggle = false,
+            int? onlyRow = null,
+            string? subtitle = null)
         {
+            _onlyRow = onlyRow;
+            Subtitle = subtitle ?? "";
             _repo = repo;
             Rulebook = rulebook;
             Category = category;
@@ -160,7 +171,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 }
 
                 var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
-                var isBlocked = blockedRowsForThisTable.Contains(cell.Row);
+                var isBlocked = blockedRowsForThisTable.Contains(cell.Row)
+                                || (_onlyRow.HasValue && cell.Row != _onlyRow.Value);
 
                 var card = new ExerciseCardVm
                 {

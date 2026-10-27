@@ -6,9 +6,11 @@
 
   Usage:
     .\tools\ui-smoke-test.ps1 -OutDir C:\temp\smoke [-Exe <path>] [-PdfName out.pdf] [-NoPrint]
-                              [-AgeGroup DO_8_ROK] [-Category MG]
+                              [-AgeGroup DO_8_ROK] [-Category MG] [-SeparateOkno 1,7]
   -AgeGroup is the Rulebook enum name (DO_8_ROK, DO_10_ROK, DO_14_ROK, OD_8_14_ROK, INDIVIDUAL),
   -Category the radio button text (WP, MP, MxP, WG, MG).
+  -SeparateOkno fills these Okno with "Zvlášť" (one exercise per team member): every member takes the
+  first tile of the row, the last member the second tile (MG: 0.010, 0.010, 0.010, 0.020 -> 0.013).
 #>
 param(
     [string]$Exe = (Join-Path $PSScriptRoot '..\bin\Debug\net8.0-windows\Akro Tool SK.exe'),
@@ -16,7 +18,8 @@ param(
     [string]$PdfName = 'smoke.pdf',
     [switch]$NoPrint,
     [string]$AgeGroup,
-    [string]$Category
+    [string]$Category,
+    [int[]]$SeparateOkno = @()
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
@@ -57,6 +60,9 @@ function FindButtonByLabel($scope, [string]$pattern) {
 function Click($el)           { $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
 function SetText($el, $value) { $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($value) }
 function MainTexts { FindAllOfType $script:main $CT::Text | ForEach-Object { $_.Current.Name } }
+# Zvlášť picker header, e.g. "Ján Novák (Base) – 1/2"
+function SubtitleOf($grid) { FindAllOfType $grid $CT::Text | ForEach-Object { $_.Current.Name } | Where-Object { $_ -match '\d+/\d+$' } | Select-Object -First 1 }
+function TileButton($text) { $t = $text; while ($t.Current.ControlType -ne $CT::Button) { $t = $Walk.GetParent($t) }; $t }
 
 $script:proc = Start-Process $Exe -PassThru
 "started pid $($proc.Id)"
@@ -104,6 +110,34 @@ try {
     for ($i = 1; $i -le $slotCount; $i++) {
         $isInv = $i -gt $teamPicks
         $row = if ($isInv) { $i - $teamPicks } else { $i }
+
+        if ($SeparateOkno -contains $i) {
+            # The "Zvlášť" button is a sibling of the Okno tile
+            $sep = $Walk.GetNextSibling((FindButtonByLabel $main "^Okno $i$"))
+            while ($sep -and $sep.Current.Name -ne 'Zvlášť') { $sep = $Walk.GetNextSibling($sep) }
+            if (-not $sep) { throw "Okno ${i}: no Zvlášť button" }
+            Click $sep
+            $prevSub = ''
+            while ($true) {
+                $grid = WaitFor { $g = FindWindowByTitle '^Cvi'; if ($g) { $s = SubtitleOf $g; if ($s -and $s -ne $prevSub) { $g } } } "Zvlášť picker for Okno $i"
+                $sub = SubtitleOf $grid
+                $null = $sub -match '(\d+)/(\d+)$'; $k = [int]$Matches[1]; $n = [int]$Matches[2]
+                if ($isInv -and $grid.Current.Name -notmatch 'Inv') { throw "Okno ${i}: Inv table was not forced" }
+                $all = @(FindAllOfType $grid $CT::Text | Where-Object { $_.Current.Name -match '^R\d+ - ' })
+                $enabledRows = @($all | Where-Object { (TileButton $_).Current.IsEnabled } | ForEach-Object { ($_.Current.Name -split ' ')[0] } | Sort-Object -Unique)
+                $labels = @($all | Where-Object { $_.Current.Name -match "^R$row - " })
+                $pick = if ($k -eq $n) { $labels[1 % $labels.Count] } else { $labels[0] }
+                "  Okno ${i} Zvlášť [$sub] selectable rows: $($enabledRows -join ',') -> $($pick.Current.Name)"
+                if ($k -gt 1 -and ($enabledRows.Count -ne 1 -or $enabledRows[0] -ne "R$row")) { throw "Okno ${i}: member $k may choose from other rows ($($enabledRows -join ','))" }
+                if ($i -eq $SeparateOkno[0] -and $k -eq 2) { Shot '1_picker_zvlast_member2' }
+                Click (TileButton $pick)
+                $prevSub = $sub
+                if ($k -eq $n) { break }
+            }
+            WaitFor { -not (FindWindowByTitle '^Cvi') } 'picker closed' | Out-Null
+            continue
+        }
+
         Click (FindButtonByLabel $main "^Okno $i$")
         $grid = WaitFor { FindWindowByTitle '^Cvi' } "picker for Okno $i"
         if ($isInv -and $grid.Current.Name -notmatch 'Inv') { throw "Okno ${i}: Inv table was not forced (title '$($grid.Current.Name)')" }
@@ -119,6 +153,8 @@ try {
     Start-Sleep -Milliseconds 500
     "summary:"; MainTexts | Where-Object { $_ -match 'Obť|/\d' } | ForEach-Object { "   $_" }
     "Okno labels:"; MainTexts | Where-Object { $_ -match ' - R\d - ' } | ForEach-Object { "   $_" }
+    $overlays = @(MainTexts | Where-Object { $_ -match '\((Base|Middle|Top)\)$' })
+    if ($overlays.Count) { "Zvlášť overlays: $($overlays -join ' | ')" }
     Shot '2_main_filled'
 
     if (-not $NoPrint) {

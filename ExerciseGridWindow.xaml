@@ -112,6 +112,15 @@
                           IsEnabled="{Binding CanToggleIndividual}"
                           Visibility="{Binding IsTableToggleVisible, Converter={StaticResource BoolToVisibility}}"
                           Content="{Binding ToggleText}" />
+
+                    <!-- Zvlášť: which team member is choosing -->
+                    <TextBlock Text="{Binding Subtitle}"
+                               Margin="18,0,0,0"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="#1F5FA8"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVisibility}}"/>
                 </StackPanel>
 
                 <Button Grid.Column="1"
