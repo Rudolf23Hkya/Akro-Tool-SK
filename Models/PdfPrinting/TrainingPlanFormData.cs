@@ -55,17 +55,31 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             SlotCount = slotCount;
         }
 
+        // One exercise for the whole team
         public void SetSlot(int slotIndex, Rulebook rulebook, Category category, int x, int y, string imagePath)
+            => SetSlot(slotIndex, rulebook, category, y, new[] { (x, imagePath, -1) });
+
+        // One or more exercises from the same row (Zvlášť: one per team member, issue #29)
+        public void SetSlot(int slotIndex, Rulebook rulebook, Category category, int y,
+                            IReadOnlyList<(int X, string ImagePath, int MemberIndex)> picks)
         {
             if (slotIndex < 0 || slotIndex >= SlotCount) throw new ArgumentOutOfRangeException(nameof(slotIndex));
+            if (picks.Count == 0) throw new ArgumentException("At least one exercise is required.", nameof(picks));
 
             var table = AgeGroups.Get(rulebook).GetTable(category);
-            if (x < 1 || x > table.Cols) throw new ArgumentOutOfRangeException(nameof(x));
             if (y < 1 || y > table.Rows) throw new ArgumentOutOfRangeException(nameof(y));
-            if (table.IsEmpty(y, x)) throw new ArgumentException($"No exercise at row {y}, column {x}.");
-            if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentException("ImagePath is required.", nameof(imagePath));
 
-            _slots[slotIndex] = new ExerciseSlotSelection(slotIndex, rulebook, category, x, y, table.GetDifficulty(x), imagePath);
+            var exercises = new List<PickedExercise>(picks.Count);
+            foreach (var (x, imagePath, memberIndex) in picks)
+            {
+                if (x < 1 || x > table.Cols) throw new ArgumentOutOfRangeException(nameof(picks), $"Column {x} is outside the table.");
+                if (table.IsEmpty(y, x)) throw new ArgumentException($"No exercise at row {y}, column {x}.");
+                if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentException("ImagePath is required.", nameof(picks));
+
+                exercises.Add(new PickedExercise(x, table.GetDifficulty(x), imagePath, memberIndex));
+            }
+
+            _slots[slotIndex] = new ExerciseSlotSelection(slotIndex, rulebook, category, y, exercises);
         }
 
         public void ClearSlot(int slotIndex)

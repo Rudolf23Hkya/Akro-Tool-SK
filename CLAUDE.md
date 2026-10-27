@@ -69,6 +69,8 @@ MainWindow.xaml(.cs)              Main screen; code-behind only opens dialogs + 
 ExerciseGridWindow.xaml(.cs)      Pop-up exercise picker (6x5 grid + Inv toggle)
 EventNameDialog.xaml(.cs)         Modal: event name            (namespace ...Views)
 TrainerClubDialog.xaml(.cs)       Modal: trainer/contact/club  (namespace ...Views)
+AgeWarningDialog.xaml(.cs)        Modal: age warning before printing (#28)
+SlotChangeDialog.xaml(.cs)        Modal: filled Okno clicked -> Jedno cvičenie / Zvlášť / Zrušiť (#29)
 Converters/
   RulebookToSlovakLabelConverter  Rulebook enum -> "Do 10 rokov"/"Do 14 rokov" for the ComboBox
 Models/
@@ -77,7 +79,7 @@ Models/
   ExerciseImageRepository.cs      Scans DataBase/ and indexes images by (rulebook, table id, row, col)
   WpfImageLoader.cs               Loads a frozen BitmapImage from an absolute path
   PdfPrinting/
-    AcroFieldNames.cs             PDF AcroForm field-name constants + ExerciseSlotSelection record
+    AcroFieldNames.cs             PDF AcroForm field-name constants + ExerciseSlotSelection / PickedExercise records
     TrainingPlanFormData.cs       Backend data model of the whole sheet (text fields + SlotCount ≤ 12 slots), difficulty/ID logic
     TrainingPlanPdfIText.cs       iText export: fill fields, place images, remove image fields, flatten
 ViewModels/
@@ -167,6 +169,7 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | Slot label after selection: `"{difficulty:0.000} - R{row} - {Category}"`; grid label: `"R{row} - {difficulty}"` | `BuildSlotLabel`, `BuildExerciseGridLabel` | #13 |
 | Summary bar: `Obť.: <sum>` and `PickCounterText` = `<Cat>: n/{TeamPicks}   Inv: n/{InvPicks}` (Individuálna zostava: `Inv: n/8`) | `RecalculateExerciseSummary` | #12 |
 | Categories per age group (`IsWPEnabled` …); switching to a group without the current category falls back to WP | `SelectedRulebook` setter → `ApplyCategory` | #27 |
+| **Zvlášť** (one exercise per team member in one Okno): button on empty Okno of team age groups; picker opens once per member Base → Top (`GetTeamMembers`: pair Base/Top, trio Base/Middle(1st card)/Top, quartet Base/Middle(2nd)/Middle(1st)/Top); member 1 chooses row + table, the others only that row (same exercise allowed); "Zavrieť" cancels the whole Okno. Okno value = average rounded to 3 decimals (`ExerciseSlotSelection.Difficulty`), total = sum of Okno values. Tile shows ‹ › and a performer overlay (name ≥ 3 chars, else member number; resolved live from the athlete cards). Clicking a filled Okno in a team group opens `SlotChangeDialog` (Jedno cvičenie / Zvlášť / Zrušiť) | `OpenSlotSeparate`, `PickExercise`, `ApplySlotToCard`, `CycleSeparateExercise`, `UpdatePerformerText` | #29 |
 | **Individuálna zostava**: only the Inv slot of the definition (8×6 table, 8 picks), no toggle, category + discipline radios disabled; PDF `category1 = Inv`, `discipline = Individuálna zostava`, `SOLO`, IDs `R{row}` | `AgeGroups.Individual()`, `UpdatePdfCategoryFields`, `GetSlotExerciseId` | #27 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
@@ -216,8 +219,10 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
   Pomoc: Autorské práva) → top controls (Tlačiť, Vyčistiť tabuľku, Obť. counter, category counters; rulebook ComboBox;
   Disciplína GroupBox with 2 radio groups; 4 athlete cards) → 12-slot `ItemsControl` (`UniformGrid Columns=4`) → footer
   (Tréner / Názov klubu / Podujatie).
-- The 12-slot tile template is **inline** in the `ItemsControl`. `ExerciseCardTemplate` and `CategoryTileTemplate` in
-  `Grid.Resources` are leftovers and not used.
+- The Okno tile template is **inline** in the `ItemsControl`: a `Grid` with the tile `Button` plus **sibling** overlay
+  buttons (‹ ›, "Zvlášť") and the performer overlay — siblings, not nested, so their clicks never open the picker.
+  `ExerciseCardTemplate` and `CategoryTileTemplate` in `Grid.Resources` are leftovers and not used.
+- Summary bar `Obť.` shows 3 decimals (Zvlášť averages like 0.015).
 - **ExerciseGridWindow**: 1250×850, min 1050×700. Header shows `WindowTitle` (e.g. `Cvičenia: WP (Do 10 rokov)`),
   a `ToggleButton` bound to `ShowIndividualTable` (disabled when `CanToggleIndividual` is false, hidden when the age
   group has only one table), and "Zavrieť". Title shows the table name when it differs, e.g. `Cvičenia: WP – Pár (Od 8 – 14 rokov)`.

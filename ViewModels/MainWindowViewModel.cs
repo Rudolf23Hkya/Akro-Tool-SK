@@ -251,6 +251,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (FormData.AthleteTopName == value) return;
                 FormData.AthleteTopName = value;
                 OnPropertyChanged();
+                RefreshPerformerTexts();
             }
         }
 
@@ -273,6 +274,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (FormData.AthleteMiddle1Name == value) return;
                 FormData.AthleteMiddle1Name = value;
                 OnPropertyChanged();
+                RefreshPerformerTexts();
             }
         }
 
@@ -295,6 +297,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (FormData.AthleteMiddle2Name == value) return;
                 FormData.AthleteMiddle2Name = value;
                 OnPropertyChanged();
+                RefreshPerformerTexts();
             }
         }
 
@@ -317,6 +320,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (FormData.AthleteBaseName == value) return;
                 FormData.AthleteBaseName = value;
                 OnPropertyChanged();
+                RefreshPerformerTexts();
             }
         }
 
@@ -333,6 +337,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // === Commands ===
         public ICommand OpenSlotCommand { get; }
+        public ICommand SeparateSlotCommand { get; }
+        public ICommand ShowPreviousExerciseCommand { get; }
+        public ICommand ShowNextExerciseCommand { get; }
         public ICommand ExitCommand { get; }
 
 
@@ -390,6 +397,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             //Printing
             OpenSlotCommand = new RelayCommand(OpenSlot);
+            SeparateSlotCommand = new RelayCommand(OpenSlotSeparate);
+            ShowPreviousExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, -1));
+            ShowNextExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, +1));
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
             ClearTableCommand = new RelayCommand(() =>
@@ -412,7 +422,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 {
                     SlotIndex = i,
                     Label = $"Okno {i + 1}",
-                    Image = _placeholderImage
+                    Image = _placeholderImage,
+                    CanSeparate = CurrentAgeGroup.HasTeamTables
                 });
             }
         }
@@ -422,16 +433,90 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (parameter is not ExerciseCardVm slot)
                 return;
 
-            var blockedInvRows = GetBlockedInvRowsExcludingSlot(slot.SlotIndex);
-            var blockedOtherRows = GetBlockedOtherCategoryRowsExcludingSlot(slot.SlotIndex);
+            // Filled Okno in a team age group: one exercise again, Zvlášť, or keep it (decision D8)
+            if (!string.IsNullOrWhiteSpace(slot.ImagePath) && CurrentAgeGroup.HasTeamTables)
+            {
+                var dialog = new Views.SlotChangeDialog(slot.SlotIndex + 1)
+                {
+                    Owner = Application.Current?.MainWindow
+                };
+                dialog.ShowDialog();
 
+                if (dialog.Choice == Views.SlotChangeChoice.Separate)
+                {
+                    OpenSlotSeparate(slot);
+                    return;
+                }
+
+                if (dialog.Choice != Views.SlotChangeChoice.Single)
+                    return;
+            }
+
+            GetTableRule(slot, out var forceIndividualTable, out var lockTableToggle);
+
+            var chosen = PickExercise(slot.SlotIndex, forceIndividualTable, lockTableToggle);
+            if (chosen?.ImagePath is null)
+                return;
+
+            FormData.SetSlot(
+                slot.SlotIndex,
+                chosen.Rulebook,
+                chosen.Category,
+                chosen.X,
+                chosen.Y,
+                chosen.ImagePath);
+
+            ApplySlotToCard(slot);
+            RecalculateExerciseSummary();
+        }
+
+        // === Zvlášť: one exercise per team member in one Okno (issue #29) ===
+        // The picker opens once per member (Base -> Top). The first member chooses the row and the table,
+        // the others can only choose from that row (the same exercise is allowed).
+        // Closing the picker at any step cancels the whole Okno (assumption A7).
+        private void OpenSlotSeparate(object? parameter)
+        {
+            if (parameter is not ExerciseCardVm slot)
+                return;
+
+            var members = GetTeamMembers();
+            GetTableRule(slot, out var forceIndividualTable, out var lockTableToggle);
+
+            ExerciseCardVm? first = null;
+            var picks = new List<(int X, string ImagePath, int MemberIndex)>(members.Count);
+
+            for (int k = 0; k < members.Count; k++)
+            {
+                var subtitle = $"{GetPickerName(members[k], k)} ({members[k].Role}) – {k + 1}/{members.Count}";
+
+                var chosen = first is null
+                    ? PickExercise(slot.SlotIndex, forceIndividualTable, lockTableToggle, subtitle: subtitle)
+                    : PickExercise(slot.SlotIndex, first.Category == Category.Inv, lockTableToggle: true,
+                                   onlyRow: first.Y, subtitle: subtitle);
+
+                if (chosen?.ImagePath is null)
+                    return;
+
+                first ??= chosen;
+                picks.Add((chosen.X, chosen.ImagePath, k));
+            }
+
+            FormData.SetSlot(slot.SlotIndex, first!.Rulebook, first.Category, first.Y, picks);
+
+            ApplySlotToCard(slot);
+            RecalculateExerciseSummary();
+        }
+
+        // 6 + 6 rule (#1, #11): an empty Okno opens the table that still needs exercises
+        private void GetTableRule(ExerciseCardVm slot, out bool forceIndividualTable, out bool lockTableToggle)
+        {
             var invCategoryCount = CountInvExercisesExcludingSlot(slot.SlotIndex);
             var otherCategoryCount = CountOtherCategoryExercisesExcludingSlot(slot.SlotIndex);
 
             var isUnsetSlot = string.IsNullOrWhiteSpace(slot.ImagePath);
 
-            bool forceIndividualTable = false;
-            bool lockTableToggle = false;
+            forceIndividualTable = false;
+            lockTableToggle = false;
 
             if (isUnsetSlot)
             {
@@ -446,17 +531,24 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     lockTableToggle = true;
                 }
             }
+        }
 
+        // Shows the picker; returns the clicked tile or null when closed with "Zavrieť"
+        private ExerciseCardVm? PickExercise(int slotIndex, bool startWithIndividualTable, bool lockTableToggle,
+                                             int? onlyRow = null, string? subtitle = null)
+        {
             var gridVm = new ExerciseGridViewModel(
                 _repo,
                 SelectedRulebook,
                 SelectedBackendCategory,
-                slot.SlotIndex,
+                slotIndex,
                 _placeholderImage,
-                blockedInvRows,
-                blockedOtherRows,
-                startWithIndividualTable: forceIndividualTable,
-                lockTableToggle: lockTableToggle);
+                GetBlockedInvRowsExcludingSlot(slotIndex),
+                GetBlockedOtherCategoryRowsExcludingSlot(slotIndex),
+                startWithIndividualTable: startWithIndividualTable,
+                lockTableToggle: lockTableToggle,
+                onlyRow: onlyRow,
+                subtitle: subtitle);
 
             ExerciseCardVm? chosen = null;
             gridVm.ExerciseSelected += ex => chosen = ex;
@@ -475,27 +567,93 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             };
 
             win.ShowDialog();
+            return chosen;
+        }
 
-            if (chosen?.ImagePath is null)
+        // Copies FormData's slot into the tile (FormData is what gets printed, the tile is what is shown)
+        private void ApplySlotToCard(ExerciseCardVm card)
+        {
+            var s = FormData.Slots[card.SlotIndex];
+            if (s is null)
                 return;
 
-            FormData.SetSlot(
-                slot.SlotIndex,
-                chosen.Rulebook,
-                chosen.Category,
-                chosen.X,
-                chosen.Y,
-                chosen.ImagePath);
+            card.ImagePath = s.ImagePath;
+            card.X = s.X;
+            card.Y = s.Y;
+            card.Rulebook = s.Rulebook;
+            card.Category = s.Category;
 
-            slot.Image = chosen.Image;
-            slot.ImagePath = chosen.ImagePath;
-            slot.X = chosen.X;
-            slot.Y = chosen.Y;
-            slot.Rulebook = chosen.Rulebook;
-            slot.Category = chosen.Category;
-            slot.Label = BuildSlotLabel(slot.SlotIndex);
+            card.SeparateImages = s.Exercises
+                .Select(e => WpfImageLoader.Load(e.ImagePath) ?? _placeholderImage)
+                .ToList();
+            card.ShownExerciseIndex = 0;
+            card.Image = card.SeparateImages[0];
 
-            RecalculateExerciseSummary();
+            card.IsSeparate = s.IsSeparate;
+            card.CanSeparate = false;
+            card.Label = BuildSlotLabel(card.SlotIndex);
+            UpdatePerformerText(card);
+        }
+
+        // ‹ › on a Zvlášť Okno: show the previous / next member's exercise (wraps around)
+        private void CycleSeparateExercise(object? parameter, int step)
+        {
+            if (parameter is not ExerciseCardVm card || !card.IsSeparate || card.SeparateImages.Count == 0)
+                return;
+
+            var count = card.SeparateImages.Count;
+            card.ShownExerciseIndex = ((card.ShownExerciseIndex + step) % count + count) % count;
+            card.Image = card.SeparateImages[card.ShownExerciseIndex];
+            UpdatePerformerText(card);
+        }
+
+        // === Team members for Zvlášť ===
+        private sealed record TeamMember(string Role, string Name);
+
+        // Order Base -> Top (assumption A4): pair = Base, Top; trio = Base, Middle (1st card), Top;
+        // quartet = Base, Middle (2nd card), Middle (1st card), Top
+        private IReadOnlyList<TeamMember> GetTeamMembers() => SelectedBackendCategory switch
+        {
+            Category.WG => new[] { new TeamMember("Base", BaseName), new TeamMember("Middle", Middle1Name), new TeamMember("Top", TopName) },
+            Category.MG => new[] { new TeamMember("Base", BaseName), new TeamMember("Middle", Middle2Name), new TeamMember("Middle", Middle1Name), new TeamMember("Top", TopName) },
+            _ => new[] { new TeamMember("Base", BaseName), new TeamMember("Top", TopName) }
+        };
+
+        // A name counts only with at least 3 characters (issue #29)
+        private static bool HasValidName(TeamMember member) => member.Name.Trim().Length >= 3;
+
+        // Picker header: the name, or "Pretekár 1", "Pretekár 2", ...
+        private static string GetPickerName(TeamMember member, int index)
+            => HasValidName(member) ? member.Name.Trim() : $"Pretekár {index + 1}";
+
+        // Okno overlay: the name, or just the member number (issue #29), plus the role
+        private void UpdatePerformerText(ExerciseCardVm card)
+        {
+            var s = FormData.Slots[card.SlotIndex];
+            if (s is null || !s.IsSeparate)
+            {
+                card.PerformerText = "";
+                return;
+            }
+
+            var memberIndex = s.Exercises[card.ShownExerciseIndex].MemberIndex;
+            var members = GetTeamMembers();
+            if (memberIndex < 0 || memberIndex >= members.Count)
+            {
+                card.PerformerText = "";
+                return;
+            }
+
+            var member = members[memberIndex];
+            var name = HasValidName(member) ? member.Name.Trim() : (memberIndex + 1).ToString(CultureInfo.InvariantCulture);
+            card.PerformerText = $"{name} ({member.Role})";
+        }
+
+        // Names are not stored in the Okno, so a changed name shows up immediately
+        private void RefreshPerformerTexts()
+        {
+            foreach (var card in ExerciseSlots)
+                UpdatePerformerText(card);
         }
 
         private void ExportFilledPdf()
@@ -703,7 +861,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (sourceCategory == Category.Inv && exerciseId.StartsWith("Inv"))
                 exerciseId = exerciseId.Substring(3);
 
-            return $"{difficulty} - {exerciseId} - {sourceCategory}";
+            // Zvlášť Okno: difficulty is the average of its exercises
+            var suffix = FormData.Slots[slotIndex]!.IsSeparate ? " - Zvlášť" : "";
+
+            return $"{difficulty} - {exerciseId} - {sourceCategory}{suffix}";
         }
 
         private void RecalculateExerciseSummary()

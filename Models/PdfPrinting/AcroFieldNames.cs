@@ -55,13 +55,30 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
     }
 
 
+    // One exercise inside an Okno
+    public sealed record PickedExercise(
+        int X,                  // column (1-based)
+        decimal Difficulty,     // from the table's column value
+        string ImagePath,
+        int MemberIndex         // -1 = whole team; 0.. = team member in Base -> Top order (Zvlášť, issue #29)
+    );
+
+    // One Okno: one exercise for the whole team, or one per team member from the same row (Zvlášť)
     public sealed record ExerciseSlotSelection(
         int SlotIndex,          // 0..SlotCount-1
         Rulebook Rulebook,
         Category Category,
-        int X,                  // column (1-based)
-        int Y,                  // row (1-based)
-        decimal Difficulty,     // from the table's column value
-        string ImagePath
-);
+        int Y,                  // row (1-based), the same for all exercises of the Okno
+        IReadOnlyList<PickedExercise> Exercises)
+    {
+        public bool IsSeparate => Exercises.Count > 1;
+
+        // Okno value = average of its exercises, rounded to 3 decimals per Okno (decision D5)
+        public decimal Difficulty =>
+            Math.Round(Exercises.Average(e => e.Difficulty), 3, MidpointRounding.AwayFromZero);
+
+        // First exercise = the one printed in the Okno's own box
+        public int X => Exercises[0].X;
+        public string ImagePath => Exercises[0].ImagePath;
+    }
 }

@@ -78,6 +78,15 @@ language, e.g. Hungarian on the dev PC):
 - *Vyčistiť tabuľku* clears Zvlášť Okno too.
 - Re-opening an Okno still excludes that Okno from counts/blocks (issue #1 behaviour).
 
+## Implementation notes (2026-10-27)
+- `ExerciseSlotSelection` now holds `Exercises` (`PickedExercise`: column, difficulty, image, member index);
+  `X` / `ImagePath` of the slot = the first exercise, so printing keeps working (only the first picture is printed
+  until Phase 4).
+- The picker header shows the member as `Ján Novák (Base) – 1/2`; the Okno overlay as `Ján Novák (Base)` or `1 (Base)`.
+- The arrows and the Zvlášť button have Slovak automation names (*Predchádzajúce cvičenie* / *Ďalšie cvičenie* /
+  *Zvlášť*), so the UI test script can drive them.
+- `tools/ui-smoke-test.ps1 -SeparateOkno 1,7` fills Okno in Zvlášť mode and checks the row lock.
+
 ## Acceptance
 - WP: Zvlášť on Okno 1 → two pickers (Base, Top); 2nd picker only allows member 1's row; result shows arrows, overlay
   names, average label; total updated with 3 decimals.

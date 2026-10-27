@@ -1,4 +1,6 @@
-﻿using System.Windows.Media;
+﻿using System;
+using System.Collections.Generic;
+using System.Windows.Media;
 using Atletika_SutaznyPlan_Generator.Models;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
@@ -38,6 +40,36 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // Picker cell without an exercise in the rulebook (shown empty, never selectable)
         public bool IsEmptyCell { get; set; }
+
+        // ===== Zvlášť (one exercise per team member, issue #29) — main slots only =====
+
+        // Empty Okno in a team age group: show the "Zvlášť" button
+        private bool _canSeparate;
+        public bool CanSeparate
+        {
+            get => _canSeparate;
+            set => SetProperty(ref _canSeparate, value);
+        }
+
+        // Okno holds one exercise per team member: show arrows + performer overlay
+        private bool _isSeparate;
+        public bool IsSeparate
+        {
+            get => _isSeparate;
+            set => SetProperty(ref _isSeparate, value);
+        }
+
+        // Who performs the exercise shown right now, e.g. "Ján Novák (Base)" or "1 (Base)"
+        private string _performerText = "";
+        public string PerformerText
+        {
+            get => _performerText;
+            set => SetProperty(ref _performerText, value);
+        }
+
+        // Pictures of the Okno in member order and the one currently shown
+        public IReadOnlyList<ImageSource?> SeparateImages { get; set; } = Array.Empty<ImageSource?>();
+        public int ShownExerciseIndex { get; set; }
 
         // ===== Backend metadata for a selected exercise cell =====
         public string? ImagePath { get; set; } // absolute path from ExerciseImageRepository
