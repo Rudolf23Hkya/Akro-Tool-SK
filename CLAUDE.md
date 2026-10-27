@@ -35,7 +35,7 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | GitHub | `Rudolf23Hkya/Akro-Tool-SK` (renamed; the old `Atletika_SutaznyPlan_Generator_SK` URL redirects) |
 | Upgrade plan | `docs/specification/` — phases for issues #26–#30, owner decisions, table reference data |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
-| Tests | None. (An old external `Atletika.SmokeTests` console app was only used for beta experiments; its sln reference was removed.) |
+| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf). Run from PowerShell on the logged-in host. |
 
 Build (Windows, normal dev): open the `.sln` in Visual Studio 2022, or `dotnet build "Akro Tool SK.csproj"`.
 
@@ -70,18 +70,18 @@ TrainerClubDialog.xaml(.cs)       Modal: trainer/contact/club  (namespace ...Vie
 Converters/
   RulebookToSlovakLabelConverter  Rulebook enum -> "Do 10 rokov"/"Do 14 rokov" for the ComboBox
 Models/
-  Enums.cs                        Rulebook, Category enums + ToSlovakLabel()
-  CategoryMap.cs                  Category -> DB folder name
-  ExerciseImageRepository.cs      Scans DataBase/ and indexes images by (rulebook, category, row, col)
+  Enums.cs                        Rulebook, Category enums + ToSlovakLabel() (label comes from AgeGroups)
+  AgeGroups.cs                    Age-group definitions: tables (size, column values, empty cells), picks, DB folder/prefix, age limit
+  ExerciseImageRepository.cs      Scans DataBase/ and indexes images by (rulebook, table id, row, col)
   WpfImageLoader.cs               Loads a frozen BitmapImage from an absolute path
   PdfPrinting/
     AcroFieldNames.cs             PDF AcroForm field-name constants + ExerciseSlotSelection record
-    TrainingPlanFormData.cs       Backend data model of the whole sheet (text fields + 12 slots), difficulty/ID logic
+    TrainingPlanFormData.cs       Backend data model of the whole sheet (text fields + SlotCount ≤ 12 slots), difficulty/ID logic
     TrainingPlanPdfIText.cs       iText export: fill fields, place images, remove image fields, flatten
 ViewModels/
   ViewModelBase.cs                INotifyPropertyChanged + SetProperty
   RelayCommand.cs                 ICommand (Action / Action<object?>)
-  ExerciseCardVm.cs               One tile — used both for the 12 main slots AND the 30 grid cells
+  ExerciseCardVm.cs               One tile — used both for the main slots (Okno) AND the picker grid cells
   MainWindowViewModel.cs          All main-screen state + selection rules + PDF export
   ExerciseGridViewModel.cs        Pop-up grid state
 DataBase/                         Exercise picture "database" (PNG files, ~684 MB) — see §5
@@ -121,7 +121,7 @@ MainWindow.xaml ──DataContext (created in XAML)──> MainWindowViewModel
 DataBase/
   do10_db/   (Rulebook.DO_10_ROK, file prefix "10r")
   do14_db/   (Rulebook.DO_14_ROK, file prefix "14r")
-    wp/ mp/ m_x_p/ wg/ mg/ inv/        (CategoryMap.FolderName)
+    wp/ mp/ m_x_p/ wg/ mg/ inv/        (ExerciseTable.Id in AgeGroups.cs)
       <prefix>_<cat>_<COL>_<ROW>.png   e.g. 10r_mp_03_02.png = column 3, row 2
           input_4_crop/                    original uncropped source images (NOT indexed; kept on purpose, see below)
   AutoCrop_TableBar_Resize_v4_Dialog.jsx   Photoshop batch script used to crop input_4_crop -> final PNGs
@@ -129,15 +129,17 @@ DataBase/
 
 - 2 rulebooks × 6 categories × 30 images (5 columns × 6 rows) = 360 indexed PNGs, each 1032×536 RGBA.
 - File-name category token: `wp, mp, mxp (folder m_x_p), wg, mg, inv`. **The filename order is COL then ROW.**
-- `ExerciseImageRepository` regex: `^(?<prefix>\d+r)_(?<cat>[a-z_]+)_(?<a>\d{2})_(?<b>\d{2})\.png$`, stores
-  `col = a`, `row = b`. Only files directly inside the category folder are indexed (`input_4_crop` is ignored).
-  The prefix must match the rulebook folder or the file is skipped.
+- `ExerciseImageRepository` regex: `^(?<prefix>[a-z0-9]+)_(?<cat>[a-z_]+)_(?<a>\d{2})_(?<b>\d{2})\.png$`, stores
+  `col = a`, `row = b`. Only files directly inside a table folder are indexed (`input_4_crop` is ignored).
+  The prefix must match the age group's `FilePrefix` or the file is skipped; positions outside the table or on an
+  empty cell are skipped too.
 - DB root is located by `MainWindowViewModel.ResolveDbRoot()`: walks up to 8 parents from the exe dir looking for
-  `DataBase|Database|database` containing `do10_db` or `do14_db`. If not found → empty index (all tiles show placeholder).
-- Grid coordinates throughout the code: **X = column (1..5), Y = row (1..6)**. `TrainingPlanFormData.SetSlot` validates these ranges.
+  `DataBase|Database|database` containing any age-group folder. If not found → empty index (all tiles show placeholder).
+- Grid coordinates throughout the code: **X = column, Y = row**, both 1-based; the table size comes from
+  `AgeGroups.cs` (Do 10 / Do 14: 5 columns × 6 rows). `TrainingPlanFormData.SetSlot` validates against the table.
 - The repo intentionally holds the **full** picture DB including `input_4_crop/` sources and the `.jsx` script —
   it's public SGF material, and the repo is not the install folder. Don't remove them or exclude them "to save space".
-- Adding a new rulebook = new enum value + `RulebookFolder`/`RulebookPrefix`/`ToSlovakLabel` cases + `TryParseImageFileName` + DB folder.
+- Adding a new rulebook = new enum value + an `AgeGroupDefinition` in `AgeGroups.All` + DB folder.
 
 ## 6. Domain rules (implemented)
 
@@ -145,15 +147,15 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 
 | Rule | Where | Issue |
 |---|---|---|
-| Exactly **12** exercises: **6 from the selected category table + 6 from the Individual (Inv) table** | `OpenSlot` forces/locks the table toggle when one side already has 6 | #1, #11 |
+| Exactly **TeamPicks + InvPicks** exercises (Do 10 / Do 14: **6 from the selected category table + 6 from the Individual (Inv) table**) | `OpenSlot` forces/locks the table toggle when one side is full | #1, #11 |
 | **Only one exercise per row** per table (Inv rows and category rows are tracked separately) | `GetBlocked*RowsExcludingSlot` → `IsSelectable=false` / `IsBlockedByRowRule` (greyed, 0.45 opacity) | #15 |
 | Re-opening an already filled slot excludes that slot from the counts/blocks, so it can be swapped freely | `*ExcludingSlot(slotIndex)` helpers | #1 |
-| Changing rulebook or category clears all 12 slots (with Yes/No confirm if any are set) | `SelectedRulebook`/`SelectedBackendCategory` setters → `ClearExerciseSelections()` | (commit a03b6b1) |
-| Printing blocked if fewer than 12 slots are set | `ExportFilledPdf` | #14 |
-| **Difficulty** of an exercise = `column × 0.01` (col 1..5 → 0.010..0.050), independent of row/category/rulebook | `TrainingPlanFormData.DefaultDifficulty` (swappable via `DifficultyRule`) **and duplicated** in `ExerciseGridViewModel.GetExerciseDifficulty` | #12, #13 |
+| Changing rulebook or category clears all slots (Yes/No confirm **before** the change if any are set; "Nie" keeps the old selection) | `SelectedRulebook`/`SelectedBackendCategory` setters → `ConfirmClearExerciseSelections` / `ResetExerciseSlots` / `RestoreSelectionInUi` | (commit a03b6b1), Phase 1 |
+| Printing blocked if fewer than `SlotCount` slots are set | `ExportFilledPdf` | #14 |
+| **Difficulty** of an exercise = the table's column value; Do 10 / Do 14 = `column × 0.01` (col 1..5 → 0.010..0.050), independent of row/category | `ExerciseTable.GetDifficulty` in `AgeGroups.cs`, stored per slot in `ExerciseSlotSelection.Difficulty` | #12, #13 |
 | **Exercise ID** = `R{row}`; Inv exercises print as `InvR{row}` on the PDF | `TrainingPlanFormData.GetSlotExerciseId` | #13 |
 | Slot label after selection: `"{difficulty:0.000} - R{row} - {Category}"`; grid label: `"R{row} - {difficulty}"` | `BuildSlotLabel`, `BuildExerciseGridLabel` | #13 |
-| Summary bar: `Obť.: <sum>` and `<Cat>: n/6   Inv: n/6` | `RecalculateExerciseSummary` | #12 |
+| Summary bar: `Obť.: <sum>` and `<Cat>: n/{TeamPicks}   Inv: n/{InvPicks}` | `RecalculateExerciseSummary` | #12 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
 | **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Dialog `AgeWarningDialog`: **OK** = don't print, **Tlačiť aj tak** = print. **TODO (owner, Oct 2026): every age group must be checked** — Do 10 is the reference implementation; add the limits for all groups (incl. the new ones from #27) as the **last** step, after #27 lands. | `ConfirmAgeGroupOrPrintAnyway`, `GetMaxAgeInYear` | #28 |
@@ -218,7 +220,7 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 2. (Fixed in #26) Discipline names: enum `RoutineType { Combi, Dynamic, Balance }`; the radio buttons and the PDF both
    show `RoutineTypeExtensions.ToSlovakLabel()` — *Zmiešaná zostava / Dynamická zostava / Balančná zostava*
    (Balance is also called *statická zostava*).
-3. Difficulty rule duplicated in `ExerciseGridViewModel.GetExerciseDifficulty` and `TrainingPlanFormData.DefaultDifficulty`.
+3. (Duplication fixed in Phase 1 — difficulty now comes only from `AgeGroups.cs`.)
    Number formatting differs: UI labels use InvariantCulture (`0.010`), the PDF uses sk-SK (`0,010`), the summary bar uses `0.00`.
 4. Copyright message box: missing `\n` between the source URL and "See COPYING…"; `THIRD-PARTY-NOTICES.txt` still has
    placeholder `https://your-repo.example` and references a non-existent `LICENSES/OFL-1.1.txt`.

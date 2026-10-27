@@ -19,17 +19,26 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public Category Category { get; private set; }
         public int SlotIndex { get; }
 
+        private readonly ExerciseTable _teamTable;
+        private readonly ExerciseTable? _invTable;
+
         private readonly HashSet<int> _blockedInvRows;
         private readonly HashSet<int> _blockedOtherRows;
         private readonly bool _lockTableToggle;
 
-        public bool CanToggleIndividual => !_lockTableToggle;
+        public bool CanToggleIndividual => !_lockTableToggle && _invTable != null;
 
         public ObservableCollection<ExerciseCardVm> Exercises { get; } = new();
         public ObservableCollection<ExerciseCardVm> IndividualExercises { get; } = new();
 
         public ObservableCollection<ExerciseCardVm> VisibleExercises
             => ShowIndividualTable ? IndividualExercises : Exercises;
+
+        private ExerciseTable VisibleTable => ShowIndividualTable ? _invTable! : _teamTable;
+
+        // Grid size of the shown table
+        public int VisibleRows => VisibleTable.Rows;
+        public int VisibleColumns => VisibleTable.Cols;
 
         private bool _showIndividualTable;
         public bool ShowIndividualTable
@@ -40,9 +49,14 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 if (_lockTableToggle && value != _showIndividualTable)
                     return;
 
+                if (value && _invTable is null)
+                    return;
+
                 if (SetProperty(ref _showIndividualTable, value))
                 {
                     OnPropertyChanged(nameof(VisibleExercises));
+                    OnPropertyChanged(nameof(VisibleRows));
+                    OnPropertyChanged(nameof(VisibleColumns));
                     OnPropertyChanged(nameof(WindowTitle));
                     OnPropertyChanged(nameof(ToggleText));
                 }
@@ -55,7 +69,18 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 : "Prepnúť na individuálnu zostavu";
 
         public string WindowTitle
-            => $"Cvičenia: {(ShowIndividualTable ? Atletika_SutaznyPlan_Generator.Models.Category.Inv : Category)} ({Rulebook.ToSlovakLabel()})";
+        {
+            get
+            {
+                var category = ShowIndividualTable ? Atletika_SutaznyPlan_Generator.Models.Category.Inv : Category;
+                // Show the table name only when it differs from the category (e.g. "WP – Pár")
+                var name = VisibleTable.DisplayName == category.ToString()
+                    ? category.ToString()
+                    : $"{category} – {VisibleTable.DisplayName}";
+
+                return $"Cvičenia: {name} ({Rulebook.ToSlovakLabel()})";
+            }
+        }
 
         public ICommand ExerciseClickedCommand { get; }
 
@@ -82,7 +107,11 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             _blockedOtherRows = blockedOtherRows?.ToHashSet() ?? new HashSet<int>();
             _lockTableToggle = lockTableToggle;
 
-            _showIndividualTable = startWithIndividualTable;
+            var ageGroup = AgeGroups.Get(rulebook);
+            _teamTable = ageGroup.GetTable(category);
+            _invTable = ageGroup.InvTable;
+
+            _showIndividualTable = startWithIndividualTable && _invTable != null;
 
             ExerciseClickedCommand = new RelayCommand(ExerciseClicked);
 
@@ -92,7 +121,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         private void LoadFromRepository()
         {
             LoadTableInto(Exercises, Category);
-            LoadTableInto(IndividualExercises, Atletika_SutaznyPlan_Generator.Models.Category.Inv);
+            if (_invTable != null)
+                LoadTableInto(IndividualExercises, Atletika_SutaznyPlan_Generator.Models.Category.Inv);
 
             OnPropertyChanged(nameof(VisibleExercises));
             OnPropertyChanged(nameof(WindowTitle));
@@ -103,13 +133,27 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         {
             target.Clear();
 
-            var cells = _repo.GetTable(Rulebook, category, rows: 6, cols: 5);
+            var cells = _repo.GetTable(Rulebook, category);
             var blockedRowsForThisTable = category == Category.Inv
                 ? _blockedInvRows
                 : _blockedOtherRows;
 
             foreach (var cell in cells)
             {
+                if (cell.IsEmpty)
+                {
+                    target.Add(new ExerciseCardVm
+                    {
+                        X = cell.Col,
+                        Y = cell.Row,
+                        Rulebook = cell.Rulebook,
+                        Category = cell.Category,
+                        IsEmptyCell = true,
+                        IsSelectable = false
+                    });
+                    continue;
+                }
+
                 var img = WpfImageLoader.Load(cell.ImagePath) ?? _placeholder;
                 var isBlocked = blockedRowsForThisTable.Contains(cell.Row);
 
@@ -125,7 +169,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     IsBlockedByRowRule = isBlocked
                 };
 
-                card.Label = BuildExerciseGridLabel(card);
+                card.Label = BuildExerciseGridLabel(card, cell.Difficulty);
                 target.Add(card);
             }
         }
@@ -148,15 +192,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             RequestClose?.Invoke();
         }
 
-        private decimal GetExerciseDifficulty(int rowY, int colX)
+        private static string BuildExerciseGridLabel(ExerciseCardVm card, decimal difficulty)
         {
-            return colX * 0.01m;
-        }
-
-        private string BuildExerciseGridLabel(ExerciseCardVm card)
-        {
-            var difficulty = GetExerciseDifficulty(card.Y, card.X)
-                .ToString("0.000", CultureInfo.InvariantCulture);
+            var difficultyText = difficulty.ToString("0.000", CultureInfo.InvariantCulture);
 
             var exerciseId = card.Category == Category.Inv
                 ? $"InvR{card.Y}"
@@ -165,7 +203,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             if (card.Category == Category.Inv && exerciseId.StartsWith("Inv"))
                 exerciseId = exerciseId[3..];
 
-            return $"{exerciseId} - {difficulty}";
+            return $"{exerciseId} - {difficultyText}";
         }
     }
 }

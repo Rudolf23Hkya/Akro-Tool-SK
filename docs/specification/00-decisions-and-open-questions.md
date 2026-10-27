@@ -91,7 +91,7 @@ For the template: the box numbers 1–16 must become **text fields** (e.g. `BoxN
 **Chosen: Variant B** (D14). It matches "use the boxes dynamically" (D12) and the sheet reads like the routine.
 The cost is 16 small text fields in Acrobat.
 
-## 4. Found while reading the code (bug, will be fixed in Phase 1)
+## 4. Found while reading the code (bug, fixed in Phase 1)
 
 **Answering "Nie" to the clear-confirmation still changes the age group / category.**
 `SelectedRulebook` and `SelectedBackendCategory` store the new value first and only then call

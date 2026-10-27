@@ -4,8 +4,8 @@ using Atletika_SutaznyPlan_Generator.Models;
 namespace Atletika_SutaznyPlan_Generator.ViewModels
 {
     // Used BOTH for:
-    // - 12 main slots (SlotIndex + Image)
-    // - 6x5 exercise cells (X,Y + ImagePath)
+    // - main slots / Okno (SlotIndex + Image)
+    // - exercise picker cells (X,Y + ImagePath)
     public class ExerciseCardVm : ViewModelBase
     {
         private ImageSource? _image;
@@ -36,14 +36,17 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             set => SetProperty(ref _isBlockedByRowRule, value);
         }
 
+        // Picker cell without an exercise in the rulebook (shown empty, never selectable)
+        public bool IsEmptyCell { get; set; }
+
         // ===== Backend metadata for a selected exercise cell =====
         public string? ImagePath { get; set; } // absolute path from ExerciseImageRepository
-        public int X { get; set; }             // 1..5 (column)
-        public int Y { get; set; }             // 1..6 (row)
+        public int X { get; set; }             // column (1-based)
+        public int Y { get; set; }             // row (1-based)
         public Rulebook Rulebook { get; set; }
         public Category Category { get; set; }
 
         // ===== Main window slot metadata =====
-        public int SlotIndex { get; set; }     // 0..11
+        public int SlotIndex { get; set; }     // 0..SlotCount-1
     }
 }

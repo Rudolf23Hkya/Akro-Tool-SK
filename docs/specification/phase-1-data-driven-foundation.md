@@ -86,5 +86,14 @@ ComboBox / radio button jumps back.
   printing → **same PDF content as before** (compare a before/after export of the same selection).
 - Change age group with Okno filled → "Nie" keeps everything (age group, Okno, PDF label) unchanged.
 
+## Implementation notes (2026-10-27)
+- `MinAge` (Phase 5) and the mock-picture path (Phase 2) are **not** added yet — they come with the phase that uses them.
+  `MaxAge` is in the definition (Do 10 = 9, Do 14 = none, as before).
+- `CategoryMap.cs` removed — the table `Id` in `AgeGroups.cs` is the folder name.
+- *Vyčistiť tabuľku* now asks its own question (*Naozaj chcete vymazať všetky zvolené cviky?*) instead of the
+  age-group/category text it used before.
+- Verified on the Windows host: smoke test PDF before/after is pixel-identical (render compare), picker unchanged,
+  "Nie" keeps age group / category / Okno, "Áno" switches and clears.
+
 ## Risks
 - Largest refactor of the plan. Mitigation: no new behaviour in this phase, before/after PDF comparison.

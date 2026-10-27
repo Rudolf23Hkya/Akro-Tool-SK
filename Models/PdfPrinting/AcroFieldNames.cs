@@ -56,11 +56,12 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
 
     public sealed record ExerciseSlotSelection(
-        int SlotIndex,          // 0..11
+        int SlotIndex,          // 0..SlotCount-1
         Rulebook Rulebook,
         Category Category,
-        int X,                  // 1..5 (column)
-        int Y,                  // 1..6 (row)
+        int X,                  // column (1-based)
+        int Y,                  // row (1-based)
+        decimal Difficulty,     // from the table's column value
         string ImagePath
 );
 }
