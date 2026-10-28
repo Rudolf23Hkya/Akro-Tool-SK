@@ -85,6 +85,10 @@ Example (Do 10, WP, Okno 2 is Zvlášť from row 3):
   12 Okno on a **simulated** 16-box template with `BoxNumber` fields (48 boxes → 3 pages, total 0,156),
   Do 10 without Zvlášť still pixel-identical.
 - The simulated template was generated with a scratch iText tool (not in the repo); the real edit stays with the owner (O4).
+- **2026-10-28:** the owner's 16-box template replaced `Cvicebny-plan_Template.pdf` (O4 done). It adds exactly
+  `Image1_af_image.12–15`, `ExerciseDifficulity.12–15`, `ExerciseID.12–15` (A12 held); all other fields are unchanged.
+  It has **no `BoxNumber` fields** — the numbers 1–16 are printed text, so the redraw fallback is used
+  (13–16 are slightly smaller, 6.8 vs 8.2 pt glyph height, but sit inside the cover rect).
 
 ## Acceptance
 - Every exercise appears exactly once; IDs show the position for Zvlášť exercises.

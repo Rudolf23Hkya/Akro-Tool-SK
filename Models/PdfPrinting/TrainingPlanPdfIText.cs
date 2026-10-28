@@ -51,7 +51,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             var header = data.ToHeaderFieldMap(culture);
             var boxes = data.ToPrintBoxes();
 
-            // The template decides how many boxes fit on one sheet (12 today, 16 after the edit for #30)
+            // The template decides how many boxes fit on one sheet (16 since the template edit for #30)
             int boxesPerPage = CountPictureBoxes(templatePath);
             if (boxesPerPage == 0)
                 throw new InvalidOperationException("The PDF template has no picture boxes.");
@@ -173,7 +173,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         }
 
         // The printed box number sits in the strip just above the picture rectangle, at its left edge
-        // (Cvicebny-plan_Template.pdf: 9.8 pt text, baseline ~4.3 pt above the picture). Cover it with white
+        // (Cvicebny-plan_Template.pdf: 9.8 pt text, baseline ~4.3 pt above the picture; 13–16 slightly smaller, still covered). Cover it with white
         // and write the new label ("2.b") in its place; an empty label only blanks the number.
         private static void ReplacePrintedBoxNumber(PdfPage page, Rectangle pictureRect, string label, PdfFont font)
         {

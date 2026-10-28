@@ -44,7 +44,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public const string AthleteBaseName = "athleteBase.name";
         public const string AthleteBaseDob = "athleteBase.dateOfBirth";
 
-        // Picture boxes on the sheet: index 0..(box count - 1); the template decides how many exist (12, or 16 after #30)
+        // Picture boxes on the sheet: index 0..(box count - 1); the template decides how many exist (16, #30)
         public const string ImageFieldsParent = "Image1_af_image";
         public static string ImageField(int box) => $"{ImageFieldsParent}.{box}";
         public static string ExerciseDifficultyField(int box) => $"ExerciseDifficulity.{box}";

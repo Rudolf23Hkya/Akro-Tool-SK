@@ -183,7 +183,7 @@ Team size text printed from category: WP/MP/MxP → `DUO`, WG → `TRIO`, MG →
 
 ## 7. PDF export (`Models/PdfPrinting`)
 
-Template `Cvicebny-plan_Template.pdf`: one landscape page. AcroForm fields (names in `AcroFieldNames`):
+Template `Cvicebny-plan_Template.pdf`: one landscape page, 16 picture boxes (2 rows × 8). AcroForm fields (names in `AcroFieldNames`):
 
 | Field | Filled from | Notes |
 |---|---|---|
@@ -195,7 +195,7 @@ Template `Cvicebny-plan_Template.pdf`: one landscape page. AcroForm fields (name
 | `teamSizeText` | `MapTeamSizeText` | |
 | `overallDifficulity` | sum of the Okno values, `0.000`, sk-SK (comma decimal); same on every page | |
 | `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | `.dateOfBirth` holds only the birth year (issue #28) |
-| `Image1_af_image.0..N-1` | picture boxes (button fields used only for their rectangles). N = boxes per page, counted from the template (12 today; 16 after the owner's edit for #30) | |
+| `Image1_af_image.0..N-1` | picture boxes (button fields used only for their rectangles). N = boxes per page, counted from the template (16 since the owner's edit for #30; boxes 1–12 unchanged, 13–16 in the second row) | |
 | `ExerciseDifficulity.k`, `ExerciseID.k` | per box: Okno value (only on `n.a` of a Zvlášť Okno, the rest blank) and ID (`R1`, `InvR1`, Zvlášť: `R1.Top`, `R1.Middle2`, `InvR1.Base`) | #30 |
 | `BoxNumber.k` (optional) | box number `1`, `2.a`, `2.b`, … If the template has no such fields, the printed numbers 1..N are covered and redrawn where they differ (`ReplacePrintedBoxNumber`, geometry of the current template) | #30 |
 | `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` | **intentionally left empty** — the coach fills them in by pen on the printed sheet (client's request). Don't fill them. | issue #2 |
@@ -215,7 +215,9 @@ Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
    center it, `SetFixedPosition` on the page, then **remove the image field** (otherwise its appearance covers the picture).
 6. Remove parent `Image1_af_image` (unused boxes print empty); template without `BoxNumber` fields: redraw differing
    box numbers (Helvetica 8.5 pt) and blank unused ones on extra pages; then `form.FlattenFields()`.
-A plan without Zvlášť on the current template is pixel-identical to the pre-#30 output (checked with the smoke test).
+The 16-box template (2026-10-28) has no `BoxNumber` fields: boxes 1–12 are geometrically identical to the old 12-box
+template, so the redraw geometry fits; the printed 13–16 are slightly smaller but still inside the white cover rect.
+A plan without Zvlášť prints like the pre-#30 output plus 4 empty boxes (13–16).
 
 `DumpFieldNames(templatePath)` is a debug helper (console output) to list template fields.
 If the template is edited in Acrobat, re-check field names with it (or `pypdf`: `PdfReader(...).get_fields()`).
