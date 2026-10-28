@@ -38,7 +38,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         public string? AthleteBaseDob { get; set; }
 
         // ====== Selected images ======
-        // Slot index 0..SlotCount-1 => selection. The template has 12 boxes, so 12 is the maximum.
+        // Slot index 0..SlotCount-1 => selection. 12 Okno is the most any age group uses (boxes overflow to extra pages).
         public const int MaxSlots = 12;
         private readonly ExerciseSlotSelection?[] _slots = new ExerciseSlotSelection?[MaxSlots];
 

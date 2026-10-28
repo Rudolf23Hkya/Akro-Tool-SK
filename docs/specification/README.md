@@ -90,4 +90,4 @@ Reference data (table sizes, column values, empty cells, age limits) lives in **
 | **Row rule** | Max. one Okno per table row (issue #15). |
 | **Empty cell** | A table position that has no exercise in the rulebook (new in #27). Not selectable. |
 | **Zvlášť** | The "one exercise per team member" mode and its button (#29, D15). |
-| **Box** | One picture box on the printed sheet (12 today, 16 after the template edit). Filled in routine order with numbers `1`, `2.a`, `2.b`, …; overflow goes to an extra page (#30). |
+| **Box** | One picture box on the printed sheet (16 on the template since the owner's edit). Filled in routine order with numbers `1`, `2.a`, `2.b`, …; overflow goes to an extra page (#30). |
