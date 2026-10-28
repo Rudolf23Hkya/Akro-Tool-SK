@@ -70,6 +70,14 @@ function FindButtonByLabel($scope, [string]$pattern) {
     while ($t -and $t.Current.ControlType -ne $CT::Button) { $t = $Walk.GetParent($t) }
     $t
 }
+# Mouse over the element (real cursor, so hover styles show), screenshot, cursor back to the corner
+function HoverShot($el, [string]$name) {
+    $r = $el.Current.BoundingRectangle
+    [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point ([int]($r.X + $r.Width / 2)), ([int]($r.Y + $r.Height / 3))
+    Start-Sleep -Milliseconds 600
+    Shot $name
+    [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point 5, 5
+}
 function Click($el)           { $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
 function SetText($el, $value) { $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($value) }
 function MainTexts { FindAllOfType $script:main $CT::Text | ForEach-Object { $_.Current.Name } }
@@ -132,6 +140,7 @@ try {
     $teamPicks = if ($totals.Count -ge 2) { $totals[0] } else { 0 }
     $slotCount = @(MainTexts | Where-Object { $_ -match '^Okno \d+$' }).Count
     "Okno count: $slotCount, counter: '$counter'"
+    HoverShot (FindButtonByLabel $main '^Okno 1$') '0_hover_empty'
 
     # Fill every Okno: the app forces the Inv table once the team table is full,
     # so Okno 1..T get team rows 1..T and the rest get Inv rows 1..I.
@@ -185,6 +194,8 @@ try {
     $overlays = @(MainTexts | Where-Object { $_ -match '\((Base|Middle|Top)\)$' })
     if ($overlays.Count) { "Zvlášť overlays: $($overlays -join ' | ')" }
     Shot '2_main_filled'
+    # Hover a filled Okno (the Zvlášť one if any, to see the overlays on the tile)
+    HoverShot (FindButtonByLabel $main $(if ($SeparateOkno.Count) { ' - Zvlášť$' } else { ' - R\d+ - ' })) '2_hover_filled'
 
     if (-not $NoPrint) {
         $pdf = Join-Path $OutDir $PdfName
