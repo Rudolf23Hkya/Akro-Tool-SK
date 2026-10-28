@@ -105,6 +105,11 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 var textMap = new Dictionary<string, string>(header);
                 var printedNumbers = new List<(int box, string label)>();
 
+                // Printed numbers of unused boxes are blanked on extra pages and on a renumbered page (Zvlášť),
+                // so the sheet never reads "… 7, 8, 11, 12"; a plain first page keeps them as before
+                bool blankUnusedNumbers = !isFirstPage ||
+                    boxes.Where((b, k) => b.Label != (k + 1).ToString(CultureInfo.InvariantCulture)).Any();
+
                 for (int k = 0; k < boxesPerPage; k++)
                 {
                     var label = k < boxes.Count ? boxes[k].Label : "";
@@ -124,9 +129,9 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                     else
                     {
                         // Template without BoxNumber fields: the numbers 1..N are printed text.
-                        // Replace a number only where it differs (unused boxes are blanked on extra pages).
+                        // Replace a number only where it differs (unused boxes: see blankUnusedNumbers).
                         var printed = (k + 1).ToString(CultureInfo.InvariantCulture);
-                        if (label.Length > 0 ? label != printed : !isFirstPage)
+                        if (label.Length > 0 ? label != printed : blankUnusedNumbers)
                             printedNumbers.Add((k, label));
                     }
                 }

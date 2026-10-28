@@ -89,6 +89,11 @@ Example (Do 10, WP, Okno 2 is Zvlášť from row 3):
   `Image1_af_image.12–15`, `ExerciseDifficulity.12–15`, `ExerciseID.12–15` (A12 held); all other fields are unchanged.
   It has **no `BoxNumber` fields** — the numbers 1–16 are printed text, so the redraw fallback is used
   (13–16 are slightly smaller, 6.8 vs 8.2 pt glyph height, but sit inside the cover rect).
+- **2026-10-28, tested on the host** with the real template: Do 10 (12 boxes), Do 14 MG with 5 Zvlášť Okno
+  (27 boxes → 2 pages), Od 8 – 14 WG, Do 8 MxP (Zvlášť) and Individuálna zostava — all print correctly; the redrawn
+  numbers over the printed 13–16 leave no traces (3× zoom). Found: with Zvlášť on a single page the unused boxes kept
+  their printed numbers, so the sheet read "… 7, 8, 11, 12, …". Now unused numbers are blanked on every renumbered
+  page too (not only on extra pages); a plan without Zvlášť is unchanged (pixel-identical).
 
 ## Acceptance
 - Every exercise appears exactly once; IDs show the position for Zvlášť exercises.
