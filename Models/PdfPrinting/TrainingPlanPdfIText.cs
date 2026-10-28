@@ -7,12 +7,12 @@ using iText.Forms;
 using iText.Forms.Fields;
 using iText.IO.Font;
 using iText.IO.Font.Constants;
-using iText.IO.Image;
 using iText.Kernel.Font;
 using iText.Kernel.Geom;
 using iText.Kernel.Colors;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Xobject;
 using iText.Kernel.Utils;
 using iText.Layout;
 using iText.Layout.Element;
@@ -59,7 +59,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             int pageCount = Math.Max(1, (boxes.Count + boxesPerPage - 1) / boxesPerPage);
 
             // Each page is filled and flattened on its own, then all pages are joined into the output file
-            using var output = new PdfDocument(new PdfWriter(outputPath));
+            // Smart mode: identical objects (the template's fonts and logos) are stored once, not once per page (#37)
+            using var output = new PdfDocument(new PdfWriter(outputPath, new WriterProperties().UseSmartMode()));
             var merger = new PdfMerger(output);
 
             for (int page = 0; page < pageCount; page++)
@@ -255,6 +256,9 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
             bool removeImageFields
         )
         {
+            // The same picture in several boxes (Zvlášť members with the same exercise) is embedded once
+            var embedded = new Dictionary<(string path, int w, int h), PdfImageXObject>();
+
             foreach (var (fieldName, imgPath) in images)
             {
                 if (string.IsNullOrWhiteSpace(fieldName)) continue;
@@ -269,12 +273,15 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                 Rectangle rect = widget.GetRectangle().ToRectangle();
                 int pageNum = pdfDoc.GetPageNumber(widget.GetPage());
 
-                var imgData = ImageDataFactory.Create(imgPath);
-                var img = new Image(imgData);
-
                 // Fit inside rect with a small margin so it doesn't touch/breach grid lines
                 var w = Math.Max(1f, rect.GetWidth() - 2 * marginPoints);
                 var h = Math.Max(1f, rect.GetHeight() - 2 * marginPoints);
+
+                // Grayscale, print resolution for this box (#37)
+                var key = (imgPath, (int)Math.Round(w), (int)Math.Round(h));
+                if (!embedded.TryGetValue(key, out var xObject))
+                    embedded[key] = xObject = new PdfImageXObject(PrintImage.Load(imgPath, w, h));
+                var img = new Image(xObject);
 
                 img.ScaleToFit(w, h);
 
