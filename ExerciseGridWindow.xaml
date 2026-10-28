@@ -57,19 +57,20 @@
                             <RowDefinition Height="26"/>
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="#F3F3F3" ClipToBounds="True">
-                            <Image Source="{Binding Image,
-                            TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
-                            FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
-                           Stretch="UniformToFill"
-                           RenderOptions.BitmapScalingMode="HighQuality"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           RenderTransformOrigin="0.5,0.5">
-                                <Image.RenderTransform>
-                                    <ScaleTransform ScaleX="0.9" ScaleY="0.9"/>
-                                </Image.RenderTransform>
-                            </Image>
+                        <!-- Picture area in the shape of the classic pictures (1032×536): every tile gets the same
+                             height and any picture fits whole. The pictures from #27 are cropped tight and range
+                             from tall to wide, so they must not be stretched or cut. -->
+                        <Border Grid.Row="0" Background="White" ClipToBounds="True">
+                            <Viewbox Stretch="Uniform">
+                                <Grid Width="1032" Height="536">
+                                    <Image Source="{Binding Image,
+                                    TargetNullValue='pack://application:,,,/assets/sgf_logo1.png',
+                                    FallbackValue='pack://application:,,,/assets/sgf_logo1.png'}"
+                                   Stretch="Uniform"
+                                   Margin="52,27"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </Grid>
+                            </Viewbox>
                         </Border>
 
                         <Border Grid.Row="1" Background="White" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0">

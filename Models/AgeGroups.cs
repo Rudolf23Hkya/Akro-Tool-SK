@@ -68,6 +68,13 @@ namespace Atletika_SutaznyPlan_Generator.Models
         // (relative to the DataBase folder); null = show the SGF placeholder instead.
         public string? MockImageRelativePath { get; init; }
 
+        // Pictures described by a CSV in DbFolder (owner's export for #27: id, row, column, value/difficulty, file).
+        // null = classic layout: <DbFolder>/<table id>/<prefix>_<table>_<COL>_<ROW>.png
+        public string? IndexFile { get; init; }
+
+        // index.csv: id prefix ("DUO" in "DUO-I-1") -> table; empty = every row belongs to the Inv table
+        public IReadOnlyDictionary<string, ExerciseTable> IndexTablesByIdPrefix { get; init; } = new Dictionary<string, ExerciseTable>();
+
         public int SlotCount => TeamPicks + InvPicks;
 
         // Individuálna zostava: one competitor, only the Inv table, no category choice
@@ -96,9 +103,6 @@ namespace Atletika_SutaznyPlan_Generator.Models
 
         // Inv table of Do 8 and Od 8 – 14: columns 1..7 = 0.01..0.07, column 8 = 0.07 too
         private static readonly decimal[] InvColumns3x8 = { 0.01m, 0.02m, 0.03m, 0.04m, 0.05m, 0.06m, 0.07m, 0.07m };
-
-        // Owner's choice (issue #27): "do 10 rokov, mxp 1-1" stands in for every missing picture
-        private const string MockImage = "do10_db/m_x_p/10r_mxp_01_01.png";
 
         // List order = order in the age-group ComboBox
         public static IReadOnlyList<AgeGroupDefinition> All { get; } = new[]
@@ -143,7 +147,8 @@ namespace Atletika_SutaznyPlan_Generator.Models
         private static AgeGroupDefinition Do8()
         {
             var duo = new ExerciseTable("duo", "Duo", rows: 5,
-                new[] { 0.01m, 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m });
+                new[] { 0.01m, 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m },
+                emptyCells: new[] { (5, 7) });
             var inv = new ExerciseTable("inv", "Inv", rows: 3, InvColumns3x8,
                 emptyCells: new[] { (1, 7), (1, 8), (2, 7), (2, 8) });
 
@@ -151,8 +156,9 @@ namespace Atletika_SutaznyPlan_Generator.Models
             {
                 Rulebook = Rulebook.DO_8_ROK,
                 Label = "Do 8 rokov",
-                DbFolder = "do8_db",
-                FilePrefix = "8r",
+                DbFolder = "new_do8",
+                IndexFile = "index.csv",
+                IndexTablesByIdPrefix = new Dictionary<string, ExerciseTable> { ["DUO"] = duo, ["IND"] = inv },
                 TeamTables = new Dictionary<Category, ExerciseTable>
                 {
                     [Category.WP] = duo,
@@ -162,8 +168,7 @@ namespace Atletika_SutaznyPlan_Generator.Models
                 InvTable = inv,
                 TeamPicks = 5,
                 InvPicks = 3,
-                MaxAge = 7,
-                MockImageRelativePath = MockImage
+                MaxAge = 7
             };
         }
 
@@ -174,6 +179,8 @@ namespace Atletika_SutaznyPlan_Generator.Models
                 new[] { 0.01m, 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m, 0.03m },
                 emptyCells: new[] { (4, 6), (5, 6) });
             var groupColumns = new[] { 0.01m, 0.01m, 0.02m, 0.02m, 0.03m, 0.03m };
+            var trojica = new ExerciseTable("trojica", "Trojica", rows: 5, groupColumns);
+            var stvorica = new ExerciseTable("stvorica", "Štvorica", rows: 5, groupColumns);
             var inv = new ExerciseTable("inv", "Inv", rows: 3, InvColumns3x8,
                 emptyCells: new[] { (1, 8), (2, 8) });
 
@@ -181,22 +188,26 @@ namespace Atletika_SutaznyPlan_Generator.Models
             {
                 Rulebook = Rulebook.OD_8_14_ROK,
                 Label = "Od 8 – 14 rokov",
-                DbFolder = "od8_14_db",
-                FilePrefix = "814r",
+                // "zat" = začiatočníci (beginners)
+                DbFolder = "new_zat_do14",
+                IndexFile = "index.csv",
+                IndexTablesByIdPrefix = new Dictionary<string, ExerciseTable>
+                {
+                    ["PAR"] = par, ["TRO"] = trojica, ["STV"] = stvorica, ["IND"] = inv
+                },
                 TeamTables = new Dictionary<Category, ExerciseTable>
                 {
                     [Category.WP] = par,
                     [Category.MP] = par,
                     [Category.MxP] = par,
-                    [Category.WG] = new ExerciseTable("trojica", "Trojica", rows: 5, groupColumns),
-                    [Category.MG] = new ExerciseTable("stvorica", "Štvorica", rows: 5, groupColumns),
+                    [Category.WG] = trojica,
+                    [Category.MG] = stvorica,
                 },
                 InvTable = inv,
                 TeamPicks = 5,
                 InvPicks = 3,
                 MinAge = 8,
-                MaxAge = 13,
-                MockImageRelativePath = MockImage
+                MaxAge = 13
             };
         }
 
@@ -207,13 +218,13 @@ namespace Atletika_SutaznyPlan_Generator.Models
             {
                 Rulebook = Rulebook.INDIVIDUAL,
                 Label = "Individuálna zostava",
-                DbFolder = "individual_db",
-                FilePrefix = "ir",
+                // index.csv rows A..H = table rows 1..8, ids without a table prefix
+                DbFolder = "new_inv",
+                IndexFile = "index.csv",
                 InvTable = new ExerciseTable("individual", "Inv", rows: 8,
                     new[] { 0.01m, 0.02m, 0.03m, 0.04m, 0.05m, 0.06m }),
                 TeamPicks = 0,
-                InvPicks = 8,
-                MockImageRelativePath = MockImage
+                InvPicks = 8
             };
         }
     }

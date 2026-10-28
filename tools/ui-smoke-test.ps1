@@ -219,8 +219,11 @@ try {
             $byId = { param($id, $type) $dlg.FindFirst($TS::Descendants, (New-Object System.Windows.Automation.AndCondition(
                 (New-Object System.Windows.Automation.PropertyCondition($AE::AutomationIdProperty, $id)),
                 (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $type))))) }
-            $nameBox = & $byId '1001' $CT::Edit
-            $saveButton = & $byId '1' $CT::Button
+            # The dialog builds its controls with a delay: wait for them
+            try {
+                $nameBox = WaitFor { & $byId '1001' $CT::Edit } 'file name box' 10
+                $saveButton = WaitFor { & $byId '1' $CT::Button } 'Save button' 10
+            } catch { $nameBox = $null; $saveButton = $null }
         }
         if ($nameBox -and $saveButton) {
             SetText $nameBox $pdf

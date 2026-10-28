@@ -35,7 +35,7 @@ uses one row, but holds one exercise per team member.
 
 | Table | Used by | Size | Column values (col 1 → last) | Empty cells |
 |---|---|---|---|---|
-| Duo | WP, MP, MxP | 5 rows × 7 cols | 0.01, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03 | none |
+| Duo | WP, MP, MxP | 5 rows × 7 cols | 0.01, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03 | row 5 × col 7 (1 cell, D18) |
 | Inv | all | 3 rows × 8 cols | 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.07 | rows 1–2 × cols 7–8 (4 cells) |
 
 ### 2.3 Od 8 – 14 rokov (new)
@@ -58,25 +58,27 @@ uses one row, but holds one exercise per team member.
 
 ## 3. Database layout for the new groups
 
-> **Confirmed by the owner (D10).** Same scheme as today:
-> `<prefix>_<table>_<COL>_<ROW>.png`, 2-digit column then 2-digit row, 1032×536 PNG recommended
-> (same ratio as today so the PDF boxes look the same).
+> **As delivered by the owner on 2026-10-28 (D17)** — replaces the `<prefix>_<table>_<COL>_<ROW>.png` scheme
+> planned in D10. Details: [phase-6-real-pictures.md](phase-6-real-pictures.md).
 
 ```
 DataBase/
-  do8_db/          prefix 8r      duo/        8r_duo_01_01.png … 8r_duo_07_05.png
-                                  inv/        8r_inv_01_01.png … 8r_inv_08_03.png   (no files for empty cells)
-  od8_14_db/       prefix 814r    par/        814r_par_01_01.png …
-                                  trojica/    814r_trojica_01_01.png …
-                                  stvorica/   814r_stvorica_01_01.png …
-                                  inv/        814r_inv_01_01.png …
-  individual_db/   prefix ir      individual/ ir_individual_01_01.png … ir_individual_06_08.png
+  new_do8/        Do 8 rokov             index.csv, DUO-I-1.png …, IND-….png
+  new_zat_do14/   Od 8 – 14 rokov        index.csv, PAR-….png, TRO-….png, STV-….png, IND-….png
+  new_inv/        Individuálna zostava   index.csv, A1.png … H6.png, _preview_all.png (ignored)
 ```
+
+| `index.csv` | Meaning |
+|---|---|
+| `id` prefix | Table: `DUO` Duo · `PAR` Pár · `TRO` Trojica · `STV` Štvorica · `IND` Inv (`new_inv`: no prefix, one table) |
+| `row` | `Riadok I–V` → rows 1–5 · `Pružnosť` / `Statika` / `Dynamika` → rows 1 / 2 / 3 · `A–H` → rows 1–8 |
+| `column` | Column number (1-based) |
+| `value` / `difficulty` | Only checked against the column values above; the table definition decides |
+| `file` | Picture file in the same folder |
 
 - Shared tables (Duo, Pár) are stored **once**, not copied per category.
 - Do 10 / Do 14 folders stay exactly as they are (`wp, mp, m_x_p, wg, mg, inv`).
-- Until the pictures exist, the app shows the mock picture `do10_db/m_x_p/10r_mxp_01_01.png` for every non-empty
-  cell of the new groups (decision D9). A real file always wins over the mock.
+- Empty cells have no line in the CSV. A missing picture shows the SGF placeholder (the mock of D9 is switched off).
 
 ## 4. Age warning limits (Phase 5)
 
