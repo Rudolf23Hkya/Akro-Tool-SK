@@ -40,10 +40,11 @@ Phase 5  Age check for every group (#28 TODO) — always the LAST step       (ca
 |---|---|---|---|
 | 0 | [phase-0-ship-26-28.md](phase-0-ship-26-28.md) | S | Merged 2026-10-27 (6c9fb70); #26 closed; smoke test script added with Phase 1 |
 | 1 | [phase-1-data-driven-foundation.md](phase-1-data-driven-foundation.md) | L | Merged (PR #31) |
-| 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | Merged (PR #32); real pictures (O3) pending, mocks until then |
+| 2 | [phase-2-new-age-groups.md](phase-2-new-age-groups.md) | M | Merged (PR #32); real pictures → Phase 6 |
 | 3 | [phase-3-sep-exercises.md](phase-3-sep-exercises.md) | L | Merged (PR #33) |
-| 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | Merged (PR #34); template edit (O4) still open — only the PDF file changes |
+| 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | Merged (PR #34); 16-box template merged (PR #38), tested on the host 2026-10-28 |
 | 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | Merged (PR #35) |
+| 6 | [phase-6-real-pictures.md](phase-6-real-pictures.md) | M | Branch `feature/real-pictures` — owner's pictures for the new groups (O3) |
 
 Reference data (table sizes, column values, empty cells, age limits) lives in **one** place:
 [01-age-group-tables.md](01-age-group-tables.md).
@@ -54,8 +55,8 @@ Reference data (table sizes, column values, empty cells, age limits) lives in **
 |---|---|---|
 | O1 | Test the `feature/issues-26-28` build on Windows and approve the PR | Phase 0 |
 | O2 | Upload the rulebook PDFs to `docs/` (planned by the owner) | Phase 2 (reference) |
-| O3 | Prepare the exercise pictures for Do 8, Od 8 – 14 and Individuálna zostava | End of Phase 2 (mocks until then) |
-| O4 | Edit `Cvicebny-plan_Template.pdf` in Acrobat: add 4 more boxes (→ 16) and turn the box numbers into text fields `BoxNumber.0–15` (see Phase 4, part 4.1) | Phase 4 |
+| O3 | ~~Prepare the exercise pictures for Do 8, Od 8 – 14 and Individuálna zostava~~ — delivered 2026-10-28 (Phase 6) | done |
+| O4 | ~~Edit `Cvicebny-plan_Template.pdf` in Acrobat: add 4 more boxes (→ 16)~~ — done 2026-10-28 (PR #38). The box numbers stayed printed text (no `BoxNumber` fields); the app covers and redraws them, so this is optional. | done |
 | O5 | ~~Confirm or correct the assumptions A1–A13~~ — confirmed 2026-10-28 | done |
 
 ## 4. Ground rules (from CLAUDE.md, apply to every phase)
