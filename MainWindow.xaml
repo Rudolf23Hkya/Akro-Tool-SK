@@ -305,11 +305,15 @@
                                                 <RowDefinition Height="34"/>
                                             </Grid.RowDefinitions>
 
-                                            <Border Grid.Row="0" Background="#EEEEEE">
-                                                <Image Source="{Binding Image}"
-                                           Stretch="Uniform"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
+                                            <!-- Fixed picture area (shape of the classic 1032×536 pictures): the tile
+                                                 height never depends on the picture; tall/wide pictures fit whole -->
+                                            <Border Grid.Row="0" Background="White">
+                                                <Viewbox Stretch="Uniform">
+                                                    <Grid Width="1032" Height="536">
+                                                        <Image Source="{Binding Image}"
+                                                               Stretch="Uniform"/>
+                                                    </Grid>
+                                                </Viewbox>
                                             </Border>
 
                                             <Border Grid.Row="1"

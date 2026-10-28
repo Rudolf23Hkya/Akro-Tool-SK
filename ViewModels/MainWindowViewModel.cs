@@ -391,8 +391,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public MainWindowViewModel()
         {
             // Locate DB root (must contain an age-group folder like do10_db)
-            var dbRoot = ResolveDbRoot();
+            var dbRoot = ExerciseImageRepository.ResolveDbRoot();
             _repo = new ExerciseImageRepository(dbRoot);
+
+            // Database problems (e.g. a value in index.csv that differs from the table) go to the trace log
+            foreach (var problem in _repo.Problems)
+                System.Diagnostics.Trace.TraceWarning("DataBase: " + problem);
 
             //Printing
             OpenSlotCommand = new RelayCommand(OpenSlot);
@@ -853,25 +857,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             {
                 return null;
             }
-        }
-
-        private static string ResolveDbRoot()
-        {
-            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-
-            for (int i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
-            {
-                foreach (var folderName in new[] { "DataBase", "Database", "database" })
-                {
-                    var candidate = Path.Combine(dir.FullName, folderName);
-
-                    if (AgeGroups.All.Any(g => Directory.Exists(Path.Combine(candidate, g.DbFolder))))
-                        return candidate;
-                }
-            }
-
-            // fallback (repo will just index nothing)
-            return AppDomain.CurrentDomain.BaseDirectory;
         }
 
         private string BuildSlotLabel(int slotIndex)

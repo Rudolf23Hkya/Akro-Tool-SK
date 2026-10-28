@@ -37,7 +37,7 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | GitHub | `Rudolf23Hkya/Akro-Tool-SK` (renamed; the old `Atletika_SutaznyPlan_Generator_SK` URL redirects) |
 | Upgrade plan | `docs/specification/` — phases for issues #26–#30, owner decisions, table reference data |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
-| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf). Run from PowerShell on the logged-in host. |
+| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf) + `tools/check-database.ps1` (picture DB vs. tables). Run from PowerShell on the logged-in host. |
 
 Build (Windows, normal dev): open the `.sln` in Visual Studio 2022, or `dotnet build "Akro Tool SK.csproj"`.
 
@@ -131,22 +131,29 @@ DataBase/
           input_4_crop/                    original uncropped source images (NOT indexed; kept on purpose, see below)
   AutoCrop_TableBar_Resize_v4_Dialog.jsx   Photoshop batch script used to crop input_4_crop -> final PNGs
 
-  Not delivered yet (owner prepares the pictures; confirmed names, docs/specification/01-age-group-tables.md §3):
-  do8_db/        prefix "8r"    duo/ inv/
-  od8_14_db/     prefix "814r"  par/ trojica/ stvorica/ inv/
-  individual_db/ prefix "ir"    individual/
+  Owner's export for #27 (2026-10-28), read through index.csv — keep folder and file names as they are (D17):
+  new_do8/       Do 8 rokov            index.csv + DUO-I-1.png …, IND-….png
+  new_zat_do14/  Od 8 – 14 rokov       index.csv + PAR-/TRO-/STV-/IND-….png   ("zat" = začiatočníci)
+  new_inv/       Individuálna zostava  index.csv + A1.png … H6.png, _preview_all.png (not indexed, kept on purpose)
 ```
 
 - Do 10 / Do 14: 2 rulebooks × 6 categories × 30 images (5 columns × 6 rows) = 360 indexed PNGs, each 1032×536 RGBA.
-- New groups: until a picture exists, `ExerciseImageRepository.GetImagePath` returns the **mock**
-  `do10_db/m_x_p/10r_mxp_01_01.png` (`AgeGroupDefinition.MockImageRelativePath`, owner's choice in #27); a real file
-  always wins. Set `MockImageRelativePath = null` once all pictures are delivered.
+- New groups (`AgeGroupDefinition.IndexFile = "index.csv"`): `ExerciseImageRepository.IndexFromCsv` finds the columns
+  by header name (`id`, `row`, `column`, `value`|`difficulty`, `file` — order differs between the folders). Table =
+  id prefix via `IndexTablesByIdPrefix` (`DUO`, `PAR`, `TRO`, `STV`, `IND`; empty map = only the Inv table, `new_inv`).
+  Row = `Riadok I–V` → 1–5, `Pružnosť`/`Statika`/`Dynamika` → 1–3, `A–H` → 1–8. The CSV value is only checked; the
+  table definition decides. Problems (unknown row, value mismatch, missing file, …) → `Problems`, traced at startup.
+- The new pictures are cropped tight to the drawing (76–516 px, ratio 0.33–3 : 1), so the picker and Okno tiles show
+  every picture in a fixed 1032×536 area (§8); the PDF fits them into the box anyway.
+- Missing picture → SGF placeholder. The #27 mock (`MockImageRelativePath`) is still supported but no group uses it.
+- **Database check:** `"Akro Tool SK.exe" --check-database` (or `tools/check-database.ps1`) writes
+  `database-check.txt` next to the exe — pictures per table, missing positions, CSV problems; exit code 0 = OK.
 - File-name category token: `wp, mp, mxp (folder m_x_p), wg, mg, inv`. **The filename order is COL then ROW.**
 - `ExerciseImageRepository` regex: `^(?<prefix>[a-z0-9]+)_(?<cat>[a-z_]+)_(?<a>\d{2})_(?<b>\d{2})\.png$`, stores
   `col = a`, `row = b`. Only files directly inside a table folder are indexed (`input_4_crop` is ignored).
   The prefix must match the age group's `FilePrefix` or the file is skipped; positions outside the table or on an
   empty cell are skipped too.
-- DB root is located by `MainWindowViewModel.ResolveDbRoot()`: walks up to 8 parents from the exe dir looking for
+- DB root is located by `ExerciseImageRepository.ResolveDbRoot()`: walks up to 8 parents from the exe dir looking for
   `DataBase|Database|database` containing any age-group folder. If not found → empty index (all tiles show placeholder).
 - Grid coordinates throughout the code: **X = column, Y = row**, both 1-based; the table size comes from
   `AgeGroups.cs` (Do 10 / Do 14: 5 columns × 6 rows). `TrainingPlanFormData.SetSlot` validates against the table.
@@ -214,10 +221,12 @@ Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
 5. `PlaceImagesIntoFieldRects`: for each image field, read its widget rect, scale image to fit with 3 pt margin,
    center it, `SetFixedPosition` on the page, then **remove the image field** (otherwise its appearance covers the picture).
 6. Remove parent `Image1_af_image` (unused boxes print empty); template without `BoxNumber` fields: redraw differing
-   box numbers (Helvetica 8.5 pt) and blank unused ones on extra pages; then `form.FlattenFields()`.
+   box numbers (Helvetica 8.5 pt) and blank the unused ones on extra pages and on any page whose numbering differs
+   (Zvlášť), so a sheet never reads "… 7, 8, 11, 12"; then `form.FlattenFields()`.
 The 16-box template (2026-10-28) has no `BoxNumber` fields: boxes 1–12 are geometrically identical to the old 12-box
-template, so the redraw geometry fits; the printed 13–16 are slightly smaller but still inside the white cover rect.
-A plan without Zvlášť prints like the pre-#30 output plus 4 empty boxes (13–16).
+template, so the redraw geometry fits; the printed 13–16 are slightly smaller but still inside the white cover rect
+(checked on the host at 3× zoom). A plan without Zvlášť prints like the pre-#30 output plus 4 empty boxes (13–16),
+which keep their printed numbers.
 
 `DumpFieldNames(templatePath)` is a debug helper (console output) to list template fields.
 If the template is edited in Acrobat, re-check field names with it (or `pypdf`: `PdfReader(...).get_fields()`).
@@ -230,7 +239,9 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
   (Tréner / Názov klubu / Podujatie).
 - The Okno tile template is **inline** in the `ItemsControl`: a `Grid` with the tile `Button` plus **sibling** overlay
   buttons (‹ ›, "Zvlášť") and the performer overlay — siblings, not nested, so their clicks never open the picker.
-  `ExerciseCardTemplate` and `CategoryTileTemplate` in `Grid.Resources` are leftovers and not used.
+- **Picture area** of the Okno tile and the picker tile: a `Viewbox` around a fixed 1032×536 `Grid` (white), picture
+  `Stretch=Uniform` inside (picker: margin 52,27 = the old 90 % size). The tile size never depends on the picture —
+  needed for the tightly cropped pictures of the new groups; the classic 1032×536 pictures look as before.
 - Summary bar `Obť.` shows 3 decimals (Zvlášť averages like 0.015).
 - **ExerciseGridWindow**: 1250×850, min 1050×700. Header shows `WindowTitle` (e.g. `Cvičenia: WP (Do 10 rokov)`),
   a `ToggleButton` bound to `ShowIndividualTable` (disabled when `CanToggleIndividual` is false, hidden when the age

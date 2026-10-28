@@ -33,6 +33,15 @@
 | D15 | Name of the button (was Q6) | **Zvlášť**, tooltip *Zvoliť cvičenie zvlášť pre každého pretekára*. |
 | D16 | Which cards the age check looks at (Phase 5.3) | **Only the cards the team uses** — pair: Top + Base, trio: + 1st Middle, quartet: all four. |
 
+### 2026-10-28 — real pictures (Phase 6)
+
+| # | Topic | Decision |
+|---|---|---|
+| D17 | Folders of the delivered pictures | Keep `new_do8`, `new_zat_do14`, `new_inv` and the file names as uploaded; the app reads each folder's `index.csv`. Replaces the layout of D10 for the new groups. |
+| D18 | Do 8 Duo, row V | Has only **6** exercises → R5/S7 is an empty cell. |
+| D19 | Exercise names from `index.csv` | **No** tooltip in the picker. |
+| D20 | `new_inv/_preview_all.png` | Stays in the repo; the app ignores it. |
+
 Earlier decisions that still apply (from `CLAUDE.md`): difficulty `column × 0.01` is correct **for Do 10 / Do 14**;
 `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` stay empty on the PDF; unused athlete fields are not
 greyed out; #6, #23 and the fullscreen idea from #5 are rejected.
