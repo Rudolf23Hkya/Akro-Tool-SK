@@ -37,7 +37,7 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | GitHub | `Rudolf23Hkya/Akro-Tool-SK` (renamed; the old `Atletika_SutaznyPlan_Generator_SK` URL redirects) |
 | Upgrade plan | `docs/specification/` — phases for issues #26–#30, owner decisions, table reference data |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
-| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf) + `tools/check-database.ps1` (picture DB vs. tables) + `tools/clean-pictures.ps1` (batch picture clean-up, review sheets, `-Apply`). Run from PowerShell on the logged-in, **unlocked** host. |
+| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF; `-HistoryRoundTrip`: history save → load → re-print gives the same PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf) + `tools/check-database.ps1` (picture DB vs. tables) + `tools/clean-pictures.ps1` (batch picture clean-up, review sheets, `-Apply`). Run from PowerShell on the logged-in, **unlocked** host. |
 
 Build (Windows, normal dev): open the `.sln` in Visual Studio 2022, or `dotnet build "Akro Tool SK.csproj"`.
 
@@ -72,6 +72,7 @@ EventNameDialog.xaml(.cs)         Modal: event name            (namespace ...Vie
 TrainerClubDialog.xaml(.cs)       Modal: trainer/contact/club  (namespace ...Views)
 AgeWarningDialog.xaml(.cs)        Modal: age warning before printing (#28)
 SlotChangeDialog.xaml(.cs)        Modal: filled Okno clicked -> Jedno cvičenie / Zvlášť / Zrušiť (#29)
+PlanHistoryWindow.xaml(.cs)       Modal: História -> Súťažné plány (list, Načítať / Odstrániť, #45)
 Converters/
   RulebookToSlovakLabelConverter  Rulebook enum -> "Do 10 rokov"/"Do 14 rokov" for the ComboBox
 Models/
@@ -83,12 +84,16 @@ Models/
     AcroFieldNames.cs             PDF AcroForm field-name constants + ExerciseSlotSelection / PickedExercise records
     TrainingPlanFormData.cs       Backend data model of the whole sheet (text fields + SlotCount ≤ 12 slots), difficulty/ID logic
     TrainingPlanPdfIText.cs       iText export: fill fields, place images, remove image fields, flatten
+  PlanHistory/
+    PlanHistoryEntry.cs           Records of one saved plan (JSON shape) + StoredPlan (entry + file path)
+    PlanHistoryStore.cs           One JSON file per printed plan: Save (atomic, duplicate rule), LoadAll, Delete
 ViewModels/
   ViewModelBase.cs                INotifyPropertyChanged + SetProperty
   RelayCommand.cs                 ICommand (Action / Action<object?>)
   ExerciseCardVm.cs               One tile — used both for the main slots (Okno) AND the picker grid cells
   MainWindowViewModel.cs          All main-screen state + selection rules + PDF export
   ExerciseGridViewModel.cs        Pop-up grid state
+  PlanHistoryViewModel.cs         History list (PlanHistoryItemVm: names, category / age group, date, month separator)
 DataBase/                         Exercise picture "database" (PNG files, ~684 MB) — see §5
 Cvicebny-plan_Template.pdf        Fillable PDF template (1 page, 792x612 pt landscape)
 assets/                           Icon, SGF logos (placeholder image), NotoSans-Bold.ttf
@@ -153,6 +158,11 @@ DataBase/
   `col = a`, `row = b`. Only files directly inside a table folder are indexed (`input_4_crop` is ignored).
   The prefix must match the age group's `FilePrefix` or the file is skipped; positions outside the table or on an
   empty cell are skipped too.
+- **Plan history** (#45) is *not* in the DB: `%LOCALAPPDATA%\Akro Tool SK\history\`, one
+  `yyyyMMdd-HHmmss-<id>.json` per printed plan (`System.Text.Json`, camelCase, enums **by name**, no picture paths and
+  no difficulties — both are looked up again on load). Not next to the exe: ClickOnce installs every update into a new
+  folder. `AKRO_TOOL_HISTORY_DIR` overrides the folder (used by the smoke test). Damaged files are skipped and traced;
+  history errors never block printing. Bump `PlanHistoryEntry.CurrentFormatVersion` when the shape changes.
 - DB root is located by `ExerciseImageRepository.ResolveDbRoot()`: walks up to 8 parents from the exe dir looking for
   `DataBase|Database|database` containing any age-group folder. If not found → empty index (all tiles show placeholder).
 - Grid coordinates throughout the code: **X = column, Y = row**, both 1-based; the table size comes from
@@ -181,6 +191,7 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | **Individuálna zostava**: only the Inv slot of the definition (8×6 table, 8 picks), no toggle, category + discipline radios disabled; PDF `category1 = Inv`, `discipline = Individuálna zostava`, `SOLO`, IDs `R{row}` | `AgeGroups.Individual()`, `UpdatePdfCategoryFields`, `GetSlotExerciseId` | #27 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
+| **Plan history**: every printed plan is saved (after the PDF was written; not on cancel/error/age-warning stop). Same plan as the newest entry → only its date is updated (Q9). *História → Súťažné plány…* lists them newest first (names Top → Base of the cards the category uses, Individuálna zostava: the filled cards; `MxP / Do 10 rokov`; date + event), thick line where ≥ 1 calendar month lies between neighbours. **Načítať** (or double-click; confirm if an Okno or a name is filled) sets age group / category / routine without the clear-confirmations (`ApplyRulebook`), header + athletes (Q10), then each Okno via `FormData.SetSlot` + `ApplySlotToCard` with the picking rules (limits, row rule, Zvlášť Inv only, member count); an Okno that fails stays empty and is listed in one message. Unknown age group/category or newer `formatVersion` → item greyed *nedá sa načítať*, only **Odstrániť** (Yes/No) | `OpenHistory`, `BuildHistoryEntry`, `TryReadSelection`, `LoadPlan`, `RestoreSlot`, `PlanHistoryStore`, `PlanHistoryViewModel` | #45 |
 | **Age check** before printing (warning only): age counts by year (`competition year − birth year`, competition year = current year); turning 10 during the year is already too old for *Do 10 rokov*. Limits per group (`AgeGroupDefinition.MinAge/MaxAge`): Do 8 max 7 · Do 10 max 9 · Do 14 max 13 · Od 8 – 14 min 8, max 13 · Individuálna zostava none. Only the cards the team uses are checked (pair: Top + Base, WG: + 1st Middle, MG: all four); empty years are skipped. Dialog `AgeWarningDialog` lists too old and too young separately: **OK** = don't print, **Tlačiť aj tak** = print. | `ConfirmAgeGroupOrPrintAnyway`, `GetTeamMembers` | #28 |
 
 The difficulty rule (`column × 0.01`) is **confirmed correct** by the owner for Do 10 / Do 14 — don't change it.
@@ -238,7 +249,7 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
 ## 8. UI details
 
 - **MainWindow**: 1300×850, min 1100×750 — both shrunk to the work area at startup and centered (`WindowSizing`). Rows: menu (Súbor: edit event name, edit trainer/club, export PDF, exit;
-  Pomoc: Autorské práva) → top controls (Tlačiť, Vyčistiť tabuľku, Obť. counter, category counters; rulebook ComboBox;
+  História: Súťažné plány…; Pomoc: Autorské práva) → top controls (Tlačiť, Vyčistiť tabuľku, Obť. counter, category counters; rulebook ComboBox;
   Disciplína GroupBox with 2 radio groups; 4 athlete cards) → 12-slot `ItemsControl` (`UniformGrid Columns=4`) → footer
   (Tréner / Názov klubu / Podujatie).
 - The Okno tile template is **inline** in the `ItemsControl`: a `Grid` with the tile `Button` plus **sibling** overlay
@@ -256,6 +267,10 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
   Grid: `UniformGrid` with `VisibleColumns`/`VisibleRows` from the table over `VisibleExercises` (switches between
   `Exercises` and `IndividualExercises`), top-aligned; empty cells are hidden placeholders (`IsEmptyCell`).
   Clicking a tile raises `ExerciseSelected` then `RequestClose`; closing with "Zavrieť" leaves the slot unchanged.
+- **PlanHistoryWindow** (#45): 560×640 (min 420×400, `WindowSizing`), `ListBox` with a custom `ListBoxItem` template
+  (month separator `Border` above the item when `IsSeparatorAbove`), unloadable items at 0.5 opacity, empty text
+  *Zatiaľ nebol vytlačený žiadny súťažný plán.*, buttons Načítať (default, also double-click) / Odstrániť / Zavrieť.
+  `RelayCommand` does not requery by itself — `SelectedItem` raises `RaiseCanExecuteChanged`.
 - Placeholder image for empty slots/missing pictures: `pack://application:,,,/assets/sgf_logo1.png`.
 - Startup dialogs are shown from `MainWindow.ContentRendered` (once).
 

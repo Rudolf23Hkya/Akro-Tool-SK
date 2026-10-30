@@ -1,8 +1,9 @@
 # Phase 9 — Súťažný plán history (#45) — LAST phase
 
-Status: **plan** · 2026-10-30. Done **last** on the owner's request (issue title "Do this last"), after Phase 8,
-so the saved format already contains the final Zvlášť model (Inv only, Top → Base). Open questions: Q9–Q12 in
-[00-decisions-and-open-questions.md](00-decisions-and-open-questions.md#3-open-questions).
+Status: **implemented** on `feature/phase-9-plan-history-45` · 2026-10-30, with the proposals for Q9–Q12 in
+[00-decisions-and-open-questions.md](00-decisions-and-open-questions.md#3-open-questions). Done **last** on the owner's
+request (issue title "Do this last"), after Phase 8, so the saved format already contains the final Zvlášť model
+(Inv only, Top → Base). Implementation notes: [9.7](#97-implementation-notes-2026-10-30).
 
 **Goal:** every printed plan is saved automatically; a history window (from the menu bar) lists them newest first and
 can **load** a plan back into the app or **remove** it. Only the app data is saved — no PDFs.
@@ -103,3 +104,17 @@ entry's date is updated; otherwise a new entry is added.
   remove works with confirmation; newest first; month separators correct.
 - Damaged/unknown entries never crash the app or block printing.
 - `dotnet build` 0 warnings; smoke test passes on the Windows host; owner test → close #45.
+
+## 9.7 Implementation notes (2026-10-30)
+
+- As planned, with these details:
+  - A missing picture can't be picked (the picker refuses it), so an Okno whose picture is gone is **not** restored
+    with the placeholder; it stays empty and is listed (*Okno n sa nepodarilo načítať — cvičenie už v databáze nie je.*).
+    Other failures (row rule, limits, wrong table, Zvlášť member count) say *uložené údaje nie sú platné*.
+  - A damaged JSON file is skipped (traced), it does not appear in the list. Remove it by hand from the folder.
+  - Individuálna zostava stores the hidden category / routine radios too; on load they are restored when readable.
+  - Zvlášť positions are written to the file for reading only; on load they come from the current team members.
+- Smoke test `-HistoryRoundTrip` passed on the host for Do 10 rokov WP, Od 8 – 14 rokov MG with two Zvlášť Okno,
+  and Individuálna zostava: entry saved, table cleared and a name changed, fake older / unknown / damaged entries,
+  unknown entry removed, plan loaded (all labels and the name back), re-printed PDF identical in rendered pixels,
+  re-print only updated the date (still one entry), month separator visible.
