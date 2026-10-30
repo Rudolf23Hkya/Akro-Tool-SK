@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Atletika_SutaznyPlan_Generator.Models;
 using Atletika_SutaznyPlan_Generator.Models.PdfPrinting;
+using Atletika_SutaznyPlan_Generator.Models.PlanHistory;
 using Microsoft.Win32;
 
 namespace Atletika_SutaznyPlan_Generator.ViewModels
@@ -36,6 +37,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // === Backend objects ===
         private readonly ExerciseImageRepository _repo;
+        private readonly PlanHistoryStore _history = new(PlanHistoryStore.DefaultDirectory());
         public TrainingPlanFormData FormData { get; } = new();
 
         private bool HasAnySelectedExercise()
@@ -61,26 +63,32 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     return;
                 }
 
-                _selectedRulebook = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CurrentAgeGroup));
-                OnPropertyChanged(nameof(TeamPicks));
-                OnPropertyChanged(nameof(InvPicks));
+                ApplyRulebook(value);
 
                 // E.g. WG -> Do 8 rokov (pairs only): fall back to WP, the Okno are cleared anyway
                 if (CurrentAgeGroup.HasTeamTables && !CurrentAgeGroup.IsCategoryAllowed(_selectedBackendCategory))
                     ApplyCategory(Category.WP);
 
-                OnPropertyChanged(nameof(IsWPEnabled));
-                OnPropertyChanged(nameof(IsMPEnabled));
-                OnPropertyChanged(nameof(IsMxPEnabled));
-                OnPropertyChanged(nameof(IsWGEnabled));
-                OnPropertyChanged(nameof(IsMGEnabled));
-                OnPropertyChanged(nameof(IsDisciplineEnabled));
-
                 UpdatePdfCategoryFields();
                 ResetExerciseSlots();
             }
+        }
+
+        // Sets the age group without asking (the setter asks first; loading a plan from history asks once)
+        private void ApplyRulebook(Rulebook value)
+        {
+            _selectedRulebook = value;
+            OnPropertyChanged(nameof(SelectedRulebook));
+            OnPropertyChanged(nameof(CurrentAgeGroup));
+            OnPropertyChanged(nameof(TeamPicks));
+            OnPropertyChanged(nameof(InvPicks));
+
+            OnPropertyChanged(nameof(IsWPEnabled));
+            OnPropertyChanged(nameof(IsMPEnabled));
+            OnPropertyChanged(nameof(IsMxPEnabled));
+            OnPropertyChanged(nameof(IsWGEnabled));
+            OnPropertyChanged(nameof(IsMGEnabled));
+            OnPropertyChanged(nameof(IsDisciplineEnabled));
         }
 
         // === Selected age group definition (tables, number of Okno, limits) ===
@@ -339,6 +347,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public ICommand SeparateSlotCommand { get; }
         public ICommand ShowPreviousExerciseCommand { get; }
         public ICommand ShowNextExerciseCommand { get; }
+        public ICommand OpenHistoryCommand { get; }
         public ICommand ExitCommand { get; }
 
 
@@ -403,6 +412,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             SeparateSlotCommand = new RelayCommand(OpenSlotSeparate);
             ShowPreviousExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, -1));
             ShowNextExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, +1));
+            OpenHistoryCommand = new RelayCommand(OpenHistory);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
             ClearTableCommand = new RelayCommand(() =>
@@ -724,6 +734,9 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                     FormData,
                     new CultureInfo("sk-SK"));
 
+                // Only a plan that was really printed goes into the history (issue #45); never blocks printing
+                _history.Save(BuildHistoryEntry());
+
                 MessageBox.Show(
                     $"PDF bolo úspešne vytvorené:\n{saveDialog.FileName}",
                     "Export hotový",
@@ -790,6 +803,231 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             return dialog.ShowDialog() == true;
         }
+
+        // === Súťažný plán history (issue #45) ===
+        // Every printed plan is saved; the history window loads one back or removes it.
+
+        private const string ExerciseGoneReason = "cvičenie už v databáze nie je";
+        private const string InvalidSlotReason = "uložené údaje nie sú platné";
+
+        private void OpenHistory()
+        {
+            var historyVm = new PlanHistoryViewModel(_history, ConfirmReplaceCurrentPlan);
+            var win = new Views.PlanHistoryWindow
+            {
+                DataContext = historyVm,
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            historyVm.RequestClose += () => win.DialogResult = true;
+
+            win.ShowDialog();
+
+            if (historyVm.ChosenEntry != null)
+                LoadPlan(historyVm.ChosenEntry);
+        }
+
+        private PlanHistoryEntry BuildHistoryEntry() => new()
+        {
+            SavedAt = DateTimeOffset.Now,
+            EventName = EventName,
+            TrainerName = TrainerName,
+            TrainerContact = TrainerContact,
+            ClubName = ClubName,
+            Rulebook = SelectedRulebook.ToString(),
+            Category = SelectedBackendCategory.ToString(),
+            Routine = SelectedRoutine.ToString(),
+            Athletes = new PlanHistoryAthletes
+            {
+                Top = new PlanHistoryAthlete { Name = TopName, BirthYear = TopBirthYear },
+                Middle1 = new PlanHistoryAthlete { Name = Middle1Name, BirthYear = Middle1BirthYear },
+                Middle2 = new PlanHistoryAthlete { Name = Middle2Name, BirthYear = Middle2BirthYear },
+                Base = new PlanHistoryAthlete { Name = BaseName, BirthYear = BaseBirthYear }
+            },
+            Slots = FormData.Slots.OfType<ExerciseSlotSelection>().Select(s => new PlanHistorySlot
+            {
+                Okno = s.SlotIndex + 1,
+                Table = s.Category.ToString(),
+                Row = s.Y,
+                Exercises = s.Exercises.Select(e => new PlanHistoryExercise
+                {
+                    Col = e.X,
+                    Member = e.MemberIndex >= 0 ? e.MemberIndex : null,
+                    Position = e.Position
+                }).ToList()
+            }).ToList()
+        };
+
+        /// <summary>
+        /// Age group, category and routine of a saved plan; false when the plan can't be loaded
+        /// (unknown age group or category, or written by a newer version of the app).
+        /// </summary>
+        public static bool TryReadSelection(PlanHistoryEntry entry, out Rulebook rulebook, out Category category,
+                                            out RoutineType routine)
+        {
+            category = Category.WP;
+            routine = RoutineType.Balance;
+
+            if (entry.FormatVersion > PlanHistoryEntry.CurrentFormatVersion
+                || !TryParseName(entry.Rulebook, out rulebook))
+            {
+                rulebook = default;
+                return false;
+            }
+
+            var savedRulebook = rulebook;
+            var group = AgeGroups.All.FirstOrDefault(g => g.Rulebook == savedRulebook);
+            if (group is null)
+                return false;
+
+            if (group.HasTeamTables)
+                return TryParseName(entry.Category, out category) && group.IsCategoryAllowed(category)
+                       && TryParseName(entry.Routine, out routine);
+
+            // Individuálna zostava: no category, fixed discipline — keep the stored radios if they are readable
+            if (!TryParseName(entry.Category, out category) || category == Category.Inv)
+                category = Category.WP;
+            if (!TryParseName(entry.Routine, out routine))
+                routine = RoutineType.Balance;
+            return true;
+        }
+
+        // Enum values are stored by name only (a number like "1" is not accepted)
+        private static bool TryParseName<TEnum>(string? name, out TEnum value) where TEnum : struct, Enum
+        {
+            value = default;
+            return name != null && Enum.GetNames<TEnum>().Contains(name) && Enum.TryParse(name, out value);
+        }
+
+        private bool ConfirmReplaceCurrentPlan()
+        {
+            var hasData = HasAnySelectedExercise()
+                          || new[] { TopName, Middle1Name, Middle2Name, BaseName }.Any(n => !string.IsNullOrWhiteSpace(n));
+            if (!hasData)
+                return true;
+
+            var result = MessageBox.Show("Načítať plán? Aktuálne údaje sa nahradia.", "Načítať plán",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return result == MessageBoxResult.Yes;
+        }
+
+        // Sets everything without the "clear all Okno?" questions of the setters (the user confirmed once).
+        // Each Okno goes through FormData.SetSlot + ApplySlotToCard like a picked one, so both stay in sync.
+        private void LoadPlan(PlanHistoryEntry entry)
+        {
+            if (!TryReadSelection(entry, out var rulebook, out var category, out var routine))
+                return;
+
+            ApplyRulebook(rulebook);
+            ApplyCategory(category);
+            SelectedRoutine = routine;
+            UpdatePdfCategoryFields();
+
+            EventName = entry.EventName ?? "";
+            TrainerName = entry.TrainerName ?? "";
+            TrainerContact = entry.TrainerContact ?? "";
+            ClubName = entry.ClubName ?? "";
+
+            var athletes = entry.Athletes;
+            TopName = athletes?.Top?.Name ?? "";
+            TopBirthYear = athletes?.Top?.BirthYear ?? "";
+            Middle1Name = athletes?.Middle1?.Name ?? "";
+            Middle1BirthYear = athletes?.Middle1?.BirthYear ?? "";
+            Middle2Name = athletes?.Middle2?.Name ?? "";
+            Middle2BirthYear = athletes?.Middle2?.BirthYear ?? "";
+            BaseName = athletes?.Base?.Name ?? "";
+            BaseBirthYear = athletes?.Base?.BirthYear ?? "";
+
+            ResetExerciseSlots();
+
+            var problems = new List<string>();
+            foreach (var saved in (entry.Slots ?? new List<PlanHistorySlot>()).Where(s => s != null).OrderBy(s => s.Okno))
+            {
+                var reason = RestoreSlot(saved);
+                if (reason != null)
+                    problems.Add($"Okno {saved.Okno} sa nepodarilo načítať — {reason}.");
+            }
+
+            foreach (var card in ExerciseSlots)
+                ApplySlotToCard(card);
+            RecalculateExerciseSummary();
+
+            if (problems.Count > 0)
+                MessageBox.Show(string.Join("\n", problems), "Načítanie plánu",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        // Puts one saved Okno into FormData; returns why it could not be restored, or null.
+        // The same rules as when picking apply (team / Inv limits, one Okno per row, Zvlášť only on Inv).
+        private string? RestoreSlot(PlanHistorySlot saved)
+        {
+            var index = saved.Okno - 1;
+            if (index < 0 || index >= FormData.SlotCount || FormData.Slots[index] != null)
+                return InvalidSlotReason;
+
+            if (!TryParseName(saved.Table, out Category table))
+                return InvalidSlotReason;
+
+            var group = CurrentAgeGroup;
+            var isInv = table == Category.Inv;
+            if (isInv ? group.InvTable is null : !group.HasTeamTables || table != SelectedBackendCategory)
+                return InvalidSlotReason;
+
+            // 6 + 6 rule (#1, #11) and one Okno per row (#15)
+            var sameTable = FormData.Slots.OfType<ExerciseSlotSelection>()
+                .Where(s => (s.Category == Category.Inv) == isInv)
+                .ToList();
+            if (sameTable.Count >= (isInv ? InvPicks : TeamPicks) || sameTable.Any(s => s.Y == saved.Row))
+                return InvalidSlotReason;
+
+            var exercises = saved.Exercises?.Where(e => e != null).ToList() ?? new List<PlanHistoryExercise>();
+            var picks = new List<(int X, string ImagePath, int MemberIndex, string? Position)>(exercises.Count);
+
+            if (exercises.Count == 1)
+            {
+                var path = GetRestorableImagePath(table, saved.Row, exercises[0].Col);
+                if (path is null)
+                    return ExerciseGoneReason;
+
+                picks.Add((exercises[0].Col, path, -1, null));
+            }
+            else
+            {
+                // Zvlášť: Inv table only (#43), one exercise per team member in Top -> Base order (#46)
+                var members = GetTeamMembers();
+                if (!isInv || !group.HasTeamTables || exercises.Count != members.Count)
+                    return InvalidSlotReason;
+
+                for (int k = 0; k < members.Count; k++)
+                {
+                    if ((exercises[k].Member ?? k) != k)
+                        return InvalidSlotReason;
+
+                    var path = GetRestorableImagePath(table, saved.Row, exercises[k].Col);
+                    if (path is null)
+                        return ExerciseGoneReason;
+
+                    picks.Add((exercises[k].Col, path, k, members[k].Position));
+                }
+            }
+
+            try
+            {
+                FormData.SetSlot(index, SelectedRulebook, table, saved.Row, picks);
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                return InvalidSlotReason;
+            }
+        }
+
+        // Only positions that exist in the table and have a picture can be picked, so only those are restored
+        private string? GetRestorableImagePath(Category table, int row, int col)
+            => CurrentAgeGroup.GetTable(table).HasExercise(row, col)
+                ? _repo.GetImagePath(SelectedRulebook, table, row, col)
+                : null;
 
         private static string GetTemplatePdfPath()
         {
