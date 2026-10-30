@@ -81,7 +81,7 @@ documents and the code comments refer to them.
 | Q12 | #45: Individuálna zostava has no Top/Base team — which name(s) does the list show? | The athlete cards that are filled, in the order Top, Middle 1, Middle 2, Base. | 9.4 |
 
 Decision **D21** (#43, replaces D6): Zvlášť uses **only the Inv table**. Q7 and Q8 are implemented with the proposals
-(Phase 8); the owner can still change them.
+(Phase 8), Q9–Q12 too (Phase 9); the owner can still change them.
 
 The background of D14 is kept below for reference.
 

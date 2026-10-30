@@ -74,6 +74,9 @@
                     <Separator/>
                     <MenuItem Header="Koniec" Command="{Binding ExitCommand}"/>
                 </MenuItem>
+                <MenuItem Header="História">
+                    <MenuItem Header="Súťažné plány..." Command="{Binding OpenHistoryCommand}"/>
+                </MenuItem>
                 <MenuItem Header="Pomoc">
                     <MenuItem Header="Autorské práva" Click="ShowCopyright_Click"/>
                 </MenuItem>
