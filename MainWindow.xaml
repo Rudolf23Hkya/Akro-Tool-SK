@@ -376,7 +376,7 @@
                                             CommandParameter="{Binding}"
                                             Visibility="{Binding IsSeparate, Converter={StaticResource BoolToVisibility}}"/>
 
-                                    <!-- Empty Okno in a team age group: one exercise per team member (issue #29) -->
+                                    <!-- Empty Okno in a team age group while an Inv pick is left: one Inv exercise per team member (issues #29, #43) -->
                                     <Button Content="Zvlášť"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Bottom"
@@ -387,7 +387,7 @@
                                             BorderBrush="#1F5FA8"
                                             Foreground="#1F5FA8"
                                             Cursor="Hand"
-                                            ToolTip="Zvoliť cvičenie zvlášť pre každého pretekára"
+                                            ToolTip="Zvoliť individuálne cvičenie zvlášť pre každého pretekára"
                                             Command="{Binding DataContext.SeparateSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
                                             Visibility="{Binding CanSeparate, Converter={StaticResource BoolToVisibility}}"/>
