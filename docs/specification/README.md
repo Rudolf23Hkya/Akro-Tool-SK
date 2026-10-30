@@ -44,7 +44,8 @@ Phase 5  Age check for every group (#28 TODO) — always the LAST step       (ca
 | 3 | [phase-3-sep-exercises.md](phase-3-sep-exercises.md) | L | Merged (PR #33) |
 | 4 | [phase-4-print-sep-exercises.md](phase-4-print-sep-exercises.md) | M | Merged (PR #34); 16-box template merged (PR #38), tested on the host 2026-10-28 |
 | 5 | [phase-5-age-check-all-groups.md](phase-5-age-check-all-groups.md) | S | Merged (PR #35) |
-| 6 | [phase-6-real-pictures.md](phase-6-real-pictures.md) | M | Branch `feature/real-pictures` — owner's pictures for the new groups (O3) |
+| 6 | [phase-6-real-pictures.md](phase-6-real-pictures.md) | M | Merged (PR #41) — owner's pictures for the new groups (O3) |
+| 7 | [phase-7-issues-37-39-40.md](phase-7-issues-37-39-40.md) | M | Branch `feature/phase-7-issues-37-39-40` — Okno hover bug (#40), maximized picker (#39), smaller PDF (#37), picture clean-up tool |
 
 Reference data (table sizes, column values, empty cells, age limits) lives in **one** place:
 [01-age-group-tables.md](01-age-group-tables.md).

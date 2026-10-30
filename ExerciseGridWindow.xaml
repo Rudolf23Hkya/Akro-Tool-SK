@@ -4,6 +4,7 @@
         Title="{Binding WindowTitle}"
         Width="1250" Height="850"
         MinWidth="1050" MinHeight="700"
+        WindowState="Maximized"
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResize"
         Background="White"
@@ -34,7 +35,10 @@
             Command="{Binding DataContext.ExerciseClickedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
             CommandParameter="{Binding}"
             IsEnabled="{Binding IsSelectable}">
+                <!-- Fixed tile size (picture area 238×124 = the 1032×536 shape + label): the whole grid is
+                     scaled to the window by the Viewbox below -->
                 <Border CornerRadius="8"
+                Width="240" Height="152"
                 BorderBrush="#D0D0D0"
                 BorderThickness="1"
                 SnapsToDevicePixels="True">
@@ -75,7 +79,7 @@
 
                         <Border Grid.Row="1" Background="White" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0">
                             <TextBlock Text="{Binding Label}"
-                               FontSize="12"
+                               FontSize="14"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                         </Border>
@@ -133,18 +137,19 @@
                         Click="Close_Click"/>
             </Grid>
 
-            <!-- Rows x columns grid of exercises (size comes from the table definition) -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <!-- Rows x columns grid of exercises (size comes from the table definition). The whole table is
+                 scaled to fit the window — never a scroll bar (#39) — centered, top-aligned. -->
+            <Viewbox Grid.Row="1" Stretch="Uniform" StretchDirection="Both"
+                     HorizontalAlignment="Center" VerticalAlignment="Top">
                 <ItemsControl ItemsSource="{Binding VisibleExercises}"
-                              ItemTemplate="{StaticResource ExerciseImageButtonTemplate}"
-                              VerticalAlignment="Top">
+                              ItemTemplate="{StaticResource ExerciseImageButtonTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding VisibleColumns}" Rows="{Binding VisibleRows}"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
-            </ScrollViewer>
+            </Viewbox>
         </Grid>
     </Border>
 </Window>

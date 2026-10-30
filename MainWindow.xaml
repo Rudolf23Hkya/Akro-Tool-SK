@@ -289,9 +289,13 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="10">
+                                <!-- The tile fills the whole cell (#40): a centered tile left button area above/below
+                                     it (8 Okno = taller cells) that turned blue on hover, and misplaced the overlays -->
                                 <Button Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
                                     Cursor="Hand"
                                     Command="{Binding DataContext.OpenSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}">

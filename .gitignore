@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Output of tools/clean-pictures.ps1 (review copy of the picture database)
+/DataBase_clean/

@@ -37,7 +37,7 @@ conservative changes; don't introduce new frameworks/packages without asking.
 | GitHub | `Rudolf23Hkya/Akro-Tool-SK` (renamed; the old `Atletika_SutaznyPlan_Generator_SK` URL redirects) |
 | Upgrade plan | `docs/specification/` — phases for issues #26–#30, owner decisions, table reference data |
 | License | AGPL-3.0 (`COPYING.txt`), third-party notes in `THIRD-PARTY-NOTICES.txt` |
-| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf) + `tools/check-database.ps1` (picture DB vs. tables). Run from PowerShell on the logged-in host. |
+| Tests | No unit tests. Windows UI smoke test: `tools/ui-smoke-test.ps1` (UI Automation; fills all Okno, prints a PDF) + `tools/render-pdf.ps1` (PDF → PNG via Windows.Data.Pdf) + `tools/check-database.ps1` (picture DB vs. tables) + `tools/clean-pictures.ps1` (batch picture clean-up, review sheets, `-Apply`). Run from PowerShell on the logged-in, **unlocked** host. |
 
 Build (Windows, normal dev): open the `.sln` in Visual Studio 2022, or `dotnet build "Akro Tool SK.csproj"`.
 
@@ -220,6 +220,10 @@ Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
    keeping the field's own font size (0 = auto) → `RegenerateField()`.
 5. `PlaceImagesIntoFieldRects`: for each image field, read its widget rect, scale image to fit with 3 pt margin,
    center it, `SetFixedPosition` on the page, then **remove the image field** (otherwise its appearance covers the picture).
+   The picture goes through `PrintImage.Load` (#37): grayscale on white, paper whitening at full resolution (same
+   rule as `tools/clean-pictures.ps1` — keep both in sync), area-average downscale to 300 dpi of the box (never
+   enlarged), raw 8-bit gray. One `PdfImageXObject` per picture and page; the output writer uses smart mode so the
+   template's fonts/logos are stored once. Before #37 the source PNGs were embedded unchanged (Do 10 plan: 11 MB).
 6. Remove parent `Image1_af_image` (unused boxes print empty); template without `BoxNumber` fields: redraw differing
    box numbers (Helvetica 8.5 pt) and blank the unused ones on extra pages and on any page whose numbering differs
    (Zvlášť), so a sheet never reads "… 7, 8, 11, 12"; then `form.FlattenFields()`.
@@ -239,11 +243,14 @@ If the template is edited in Acrobat, re-check field names with it (or `pypdf`: 
   (Tréner / Názov klubu / Podujatie).
 - The Okno tile template is **inline** in the `ItemsControl`: a `Grid` with the tile `Button` plus **sibling** overlay
   buttons (‹ ›, "Zvlášť") and the performer overlay — siblings, not nested, so their clicks never open the picker.
+  The tile button stretches its content (#40) — centered content left button area that turned blue on hover and
+  misplaced the overlays, which are laid out over the whole cell.
 - **Picture area** of the Okno tile and the picker tile: a `Viewbox` around a fixed 1032×536 `Grid` (white), picture
   `Stretch=Uniform` inside (picker: margin 52,27 = the old 90 % size). The tile size never depends on the picture —
   needed for the tightly cropped pictures of the new groups; the classic 1032×536 pictures look as before.
 - Summary bar `Obť.` shows 3 decimals (Zvlášť averages like 0.015).
-- **ExerciseGridWindow**: 1250×850, min 1050×700. Header shows `WindowTitle` (e.g. `Cvičenia: WP (Do 10 rokov)`),
+- **ExerciseGridWindow**: opens **maximized** (#39; restore size 1250×850, min 1050×700). The tiles have a fixed size
+  (240×152) and the whole grid sits in a `Viewbox` — the table always fits the window, no scrolling. Header shows `WindowTitle` (e.g. `Cvičenia: WP (Do 10 rokov)`),
   a `ToggleButton` bound to `ShowIndividualTable` (disabled when `CanToggleIndividual` is false, hidden when the age
   group has only one table), and "Zavrieť". Title shows the table name when it differs, e.g. `Cvičenia: WP – Pár (Od 8 – 14 rokov)`.
   Grid: `UniformGrid` with `VisibleColumns`/`VisibleRows` from the table over `VisibleExercises` (switches between
