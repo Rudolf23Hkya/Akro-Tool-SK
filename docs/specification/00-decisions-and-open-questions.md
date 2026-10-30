@@ -11,7 +11,7 @@
 | D3 | Individuálna zostava | One extra item in the age-group list, one table for all ages, **no age check**. |
 | D4 | Age warning limits | Do 8: max 7 · Do 10: max 9 · Do 14: max 13 · Od 8 – 14: min 8, max 13 (age = competition year − birth year). Warn when too old **and** when too young. |
 | D5 | Zvlášť score rounding | Average of the Okno's exercises, **rounded to 3 decimals per Okno**; the total is the sum of the rounded Okno values (printed numbers always add up). |
-| D6 | Which tables allow Zvlášť | **Both** — the team table and the Inv table. |
+| D6 | Which tables allow Zvlášť | ~~**Both** — the team table and the Inv table.~~ Replaced by D21 (#43): **Inv table only**. |
 | D7 | Printing Zvlášť exercises | Use free picture boxes on the sheet (details: D12). |
 | D8 | Changing a filled Okno | Zvlášť button only on **empty** Okno. Clicking a filled Okno asks: *Jedno cvičenie* / *Zvlášť* / *Zrušiť*. |
 | D9 | Mock pictures | Until the owner's pictures exist, every exercise of the new groups shows `DataBase/do10_db/m_x_p/10r_mxp_01_01.png` (owner's choice, issue #27). Done **in code**, not by copying files (copying would add ~550 MB). |
@@ -56,7 +56,7 @@ documents and the code comments refer to them.
 | A1 | The Od 8 – 14 *Trojica* and *Štvorica* tables have **different pictures** (same size and values). | Phase 2, DB folders |
 | A2 | Every age group has **one** Inv table shared by all categories (like Do 10 / Do 14 today). | Phase 1/2 |
 | A3 | Zvlášť is available in **every team age group** (Do 8, Do 10, Do 14, Od 8 – 14), not in Individuálna zostava (1 person). | Phase 3 |
-| A4 | Team member order for Zvlášť "from Base to Top": pair = Base, Top · trio = Base, Middle, Top (the **first** Middle card) · quartet = Base, Middle (2nd card), Middle (1st card), Top. | Phase 3 |
+| A4 | ~~Team member order for Zvlášť "from Base to Top"~~ — changed by #46 to **Top → Base**: pair = Top, Base · trio = Top, Middle (the **first** Middle card), Base · quartet = Top, Middle1 (1st card), Middle2 (2nd card), Base. | Phase 3, 8 |
 | A5 | Fallback name in the app when a name is empty or shorter than 3 characters: **"Pretekár 1"**, "Pretekár 2", … (numbered in the Base → Top order). | Phase 3 |
 | A6 | Rounding is "normal" rounding (0.0125 → 0.013, `MidpointRounding.AwayFromZero`). | Phase 3 |
 | A7 | Closing the picker in the middle of a Zvlášť sequence cancels the **whole** sequence; the Okno keeps its previous content. | Phase 3 |
@@ -65,11 +65,25 @@ documents and the code comments refer to them.
 | A10 | Individuálna zostava: the discipline radios (Zmiešaná / Dynamická / Balančná) are **disabled**, because the printed discipline is fixed to `Individuálna zostava` (D11). | Phase 2 |
 | A11 | Quartet (MG) with two Middles: IDs `R1.Middle1` / `R1.Middle2` so the two can be told apart (D13 shows only `R1.Middle`). | Phase 4 |
 | A12 | The 4 new boxes get the next field numbers: `Image1_af_image.12–15`, `ExerciseDifficulity.12–15`, `ExerciseID.12–15`; the box numbers become `BoxNumber.0–15`. | Phase 4 (O4) |
-| A13 | A box number is the plain Okno number (`3`) for a normal Okno and `{n}.a`, `{n}.b`, … for a Zvlášť Okno (letters in Base → Top order). The parts of one Zvlášť Okno may continue on the next page if the page is full. | Phase 4 |
+| A13 | A box number is the plain Okno number (`3`) for a normal Okno and `{n}.a`, `{n}.b`, … for a Zvlášť Okno (letters in Top → Base order since #46). The parts of one Zvlášť Okno may continue on the next page if the page is full. | Phase 4 |
 
 ## 3. Open questions
 
-None at the moment. The background of D14 is kept below for reference.
+2026-10-30 — for Phases 8 and 9 (issues #43–#46). Each has a proposal that is used if the owner agrees.
+
+| # | Question | Proposal | Phase |
+|---|---|---|---|
+| Q7 | #43: when all Inv picks are used, should the *Zvlášť* button on an empty Okno be **hidden** or shown **disabled**? | Hidden (like on a filled Okno); in the *Jedno cvičenie / Zvlášť / Zrušiť* dialog the choice is disabled with a tooltip. | 8.2 |
+| Q8 | #44: how grey is the *Obťažnosť* cell under `n.b`, `n.c`, `n.d`? | Light grey fill (80 % white), table lines stay visible. | 8.3 |
+| Q9 | #45: the same plan printed twice in a row — two entries or one? | One: only the date of the newest entry is updated. | 9.3 |
+| Q10 | #45: does *Načítať* also load event name, trainer, contact and club? | Yes (they were printed); they can be edited in *Súbor* afterwards. | 9.5 |
+| Q11 | #45: show the print date and event name in each list item (besides names and category / age group)? | Yes, as a small grey third line. | 9.4 |
+| Q12 | #45: Individuálna zostava has no Top/Base team — which name(s) does the list show? | The athlete cards that are filled, in the order Top, Middle 1, Middle 2, Base. | 9.4 |
+
+Decision **D21** (#43, replaces D6): Zvlášť uses **only the Inv table**. Q7 and Q8 are implemented with the proposals
+(Phase 8); the owner can still change them.
+
+The background of D14 is kept below for reference.
 
 ### Background of D14 (was Q5)
 
