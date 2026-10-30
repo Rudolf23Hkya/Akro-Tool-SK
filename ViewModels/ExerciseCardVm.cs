@@ -43,7 +43,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
         // ===== Zvlášť (one exercise per team member, issue #29) — main slots only =====
 
-        // Empty Okno in a team age group: show the "Zvlášť" button
+        // Empty Okno in a team age group while an Inv pick is left: show the "Zvlášť" button (issue #43)
         private bool _canSeparate;
         public bool CanSeparate
         {

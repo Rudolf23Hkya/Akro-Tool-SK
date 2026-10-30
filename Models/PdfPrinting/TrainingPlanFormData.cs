@@ -161,7 +161,7 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
 
         /// <summary>
         /// Picture boxes in routine order (issue #30, Variant B): Okno n -> box "n"; a Zvlášť Okno n -> boxes
-        /// "n.a", "n.b", ... (members Base -> Top). Only the first box of a Zvlášť Okno gets the Okno value;
+        /// "n.a", "n.b", ... (members Top -> Base, issue #46). Only the first box of a Zvlášť Okno gets the Okno value;
         /// its exercise IDs carry the position, e.g. "R1.Top" / "InvR1.Base".
         /// </summary>
         public IReadOnlyList<PrintBox> ToPrintBoxes()
@@ -188,7 +188,8 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                         $"{number}.{(char)('a' + k)}",
                         e.ImagePath,
                         k == 0 ? s.Difficulty : null,
-                        e.Position is null ? id : $"{id}.{e.Position}"));
+                        e.Position is null ? id : $"{id}.{e.Position}",
+                        IsContinuation: k > 0));
                 }
             }
             return boxes;

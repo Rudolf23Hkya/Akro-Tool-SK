@@ -439,7 +439,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             // Filled Okno in a team age group: one exercise again, Zvlášť, or keep it (decision D8)
             if (!string.IsNullOrWhiteSpace(slot.ImagePath) && CurrentAgeGroup.HasTeamTables)
             {
-                var dialog = new Views.SlotChangeDialog(slot.SlotIndex + 1)
+                var dialog = new Views.SlotChangeDialog(slot.SlotIndex + 1, CanSeparateSlot(slot.SlotIndex))
                 {
                     Owner = Application.Current?.MainWindow
                 };
@@ -474,16 +474,15 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         }
 
         // === Zvlášť: one exercise per team member in one Okno (issue #29) ===
-        // The picker opens once per member (Base -> Top). The first member chooses the row and the table,
-        // the others can only choose from that row (the same exercise is allowed).
+        // The picker opens once per member (Top -> Base, issue #46), always on the Inv table (issue #43).
+        // The first member chooses the row, the others can only choose from that row (the same exercise is allowed).
         // Closing the picker at any step cancels the whole Okno (assumption A7).
         private void OpenSlotSeparate(object? parameter)
         {
-            if (parameter is not ExerciseCardVm slot)
+            if (parameter is not ExerciseCardVm slot || !CanSeparateSlot(slot.SlotIndex))
                 return;
 
             var members = GetTeamMembers();
-            GetTableRule(slot, out var forceIndividualTable, out var lockTableToggle);
 
             ExerciseCardVm? first = null;
             var picks = new List<(int X, string ImagePath, int MemberIndex, string? Position)>(members.Count);
@@ -492,10 +491,8 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             {
                 var subtitle = $"{GetPickerName(members[k], k)} ({members[k].Role}) – {k + 1}/{members.Count}";
 
-                var chosen = first is null
-                    ? PickExercise(slot.SlotIndex, forceIndividualTable, lockTableToggle, subtitle: subtitle)
-                    : PickExercise(slot.SlotIndex, first.Category == Category.Inv, lockTableToggle: true,
-                                   onlyRow: first.Y, subtitle: subtitle);
+                var chosen = PickExercise(slot.SlotIndex, startWithIndividualTable: true, lockTableToggle: true,
+                                          onlyRow: first?.Y, subtitle: subtitle);
 
                 if (chosen?.ImagePath is null)
                     return;
@@ -509,6 +506,12 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             ApplySlotToCard(slot);
             RecalculateExerciseSummary();
         }
+
+        // Zvlášť uses an Inv pick (issue #43): possible in team age groups while one is left, not counting this Okno
+        private bool CanSeparateSlot(int slotIndex)
+            => CurrentAgeGroup.HasTeamTables
+               && CurrentAgeGroup.InvTable != null
+               && CountInvExercisesExcludingSlot(slotIndex) < InvPicks;
 
         // 6 + 6 rule (#1, #11): an empty Okno opens the table that still needs exercises
         private void GetTableRule(ExerciseCardVm slot, out bool forceIndividualTable, out bool lockTableToggle)
@@ -614,28 +617,28 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         // Role = shown in the app; Position = printed in the exercise ID (R1.Top, decision D13)
         private sealed record TeamMember(string Role, string Name, string Position, string BirthYear);
 
-        // The athlete cards the team uses, in order Base -> Top (assumption A4): pair = Base, Top;
-        // trio = Base, Middle (1st card), Top; quartet = Base, Middle (2nd card), Middle (1st card), Top —
-        // the two Middles print as Middle2 / Middle1 (A11)
+        // The athlete cards the team uses, in order Top -> Base (issue #46): pair = Top, Base;
+        // trio = Top, Middle (1st card), Base; quartet = Top, Middle (1st card), Middle (2nd card), Base —
+        // the two Middles print as Middle1 / Middle2 (A11)
         private IReadOnlyList<TeamMember> GetTeamMembers() => SelectedBackendCategory switch
         {
             Category.WG => new[]
             {
-                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
+                new TeamMember("Top", TopName, "Top", TopBirthYear),
                 new TeamMember("Middle", Middle1Name, "Middle", Middle1BirthYear),
-                new TeamMember("Top", TopName, "Top", TopBirthYear)
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear)
             },
             Category.MG => new[]
             {
-                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
-                new TeamMember("Middle", Middle2Name, "Middle2", Middle2BirthYear),
+                new TeamMember("Top", TopName, "Top", TopBirthYear),
                 new TeamMember("Middle", Middle1Name, "Middle1", Middle1BirthYear),
-                new TeamMember("Top", TopName, "Top", TopBirthYear)
+                new TeamMember("Middle", Middle2Name, "Middle2", Middle2BirthYear),
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear)
             },
             _ => new[]
             {
-                new TeamMember("Base", BaseName, "Base", BaseBirthYear),
-                new TeamMember("Top", TopName, "Top", TopBirthYear)
+                new TeamMember("Top", TopName, "Top", TopBirthYear),
+                new TeamMember("Base", BaseName, "Base", BaseBirthYear)
             }
         };
 
@@ -752,7 +755,6 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             // Top first, like the cards on screen
             var athletes = GetTeamMembers()
-                .Reverse()
                 .Select(m => (role: m.Role, name: m.Name, birthYear: m.BirthYear,
                               age: int.TryParse(m.BirthYear, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
                                   ? competitionYear - year
@@ -888,6 +890,10 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
                 s.Category != Category.Inv);
 
             Obtaznost = FormData.OverallDifficulty;
+
+            // The "Zvlášť" button of an empty Okno disappears once all Inv picks are used (issue #43)
+            foreach (var card in ExerciseSlots)
+                card.CanSeparate = string.IsNullOrWhiteSpace(card.ImagePath) && CanSeparateSlot(card.SlotIndex);
 
             OnPropertyChanged(nameof(PickCounterText));
         }

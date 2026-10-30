@@ -177,7 +177,7 @@ Located in `MainWindowViewModel` (counting/row blocking) and `ExerciseGridViewMo
 | Slot label after selection: `"{difficulty:0.000} - R{row} - {Category}"`; grid label: `"R{row} - {difficulty}"` | `BuildSlotLabel`, `BuildExerciseGridLabel` | #13 |
 | Summary bar: `Obť.: <sum>` and `PickCounterText` = `<Cat>: n/{TeamPicks}   Inv: n/{InvPicks}` (Individuálna zostava: `Inv: n/8`) | `RecalculateExerciseSummary` | #12 |
 | Categories per age group (`IsWPEnabled` …); switching to a group without the current category falls back to WP | `SelectedRulebook` setter → `ApplyCategory` | #27 |
-| **Zvlášť** (one exercise per team member in one Okno): button on empty Okno of team age groups; picker opens once per member Base → Top (`GetTeamMembers`: pair Base/Top, trio Base/Middle(1st card)/Top, quartet Base/Middle(2nd)/Middle(1st)/Top); member 1 chooses row + table, the others only that row (same exercise allowed); "Zavrieť" cancels the whole Okno. Okno value = average rounded to 3 decimals (`ExerciseSlotSelection.Difficulty`), total = sum of Okno values. Tile shows ‹ › and a performer overlay (name ≥ 3 chars, else member number; resolved live from the athlete cards). Clicking a filled Okno in a team group opens `SlotChangeDialog` (Jedno cvičenie / Zvlášť / Zrušiť) | `OpenSlotSeparate`, `PickExercise`, `ApplySlotToCard`, `CycleSeparateExercise`, `UpdatePerformerText` | #29 |
+| **Zvlášť** (one exercise per team member in one Okno): **Inv table only** (#43): button on empty Okno of team age groups while an Inv pick is left (`CanSeparateSlot`, refreshed in `RecalculateExerciseSummary`), picker locked to Inv; picker opens once per member Top → Base (#46, `GetTeamMembers`: pair Top/Base, trio Top/Middle(1st card)/Base, quartet Top/Middle1(1st)/Middle2(2nd)/Base); member 1 chooses the row, the others only that row (same exercise allowed); "Zavrieť" cancels the whole Okno. Okno value = average rounded to 3 decimals (`ExerciseSlotSelection.Difficulty`), total = sum of Okno values. Tile shows ‹ › and a performer overlay (name ≥ 3 chars, else member number; resolved live from the athlete cards). Clicking a filled Okno in a team group opens `SlotChangeDialog` (Jedno cvičenie / Zvlášť / Zrušiť; Zvlášť disabled when no Inv pick is left) | `OpenSlotSeparate`, `CanSeparateSlot`, `PickExercise`, `ApplySlotToCard`, `CycleSeparateExercise`, `UpdatePerformerText` | #29, #43, #46 |
 | **Individuálna zostava**: only the Inv slot of the definition (8×6 table, 8 picks), no toggle, category + discipline radios disabled; PDF `category1 = Inv`, `discipline = Individuálna zostava`, `SOLO`, IDs `R{row}` | `AgeGroups.Individual()`, `UpdatePdfCategoryFields`, `GetSlotExerciseId` | #27 |
 | "Clear table" button (Vyčistiť tabuľku) | `ClearTableCommand` | #21 |
 | Unused athlete fields are **not** greyed out (owner decided coaches may deviate from rulebook assignments) | — | #17 |
@@ -203,7 +203,7 @@ Template `Cvicebny-plan_Template.pdf`: one landscape page, 16 picture boxes (2 r
 | `overallDifficulity` | sum of the Okno values, `0.000`, sk-SK (comma decimal); same on every page | |
 | `athleteTop/athleteMiddle[1]/athleteMiddle[2]/athleteBase` `.name` / `.dateOfBirth` | athlete cards | `.dateOfBirth` holds only the birth year (issue #28) |
 | `Image1_af_image.0..N-1` | picture boxes (button fields used only for their rectangles). N = boxes per page, counted from the template (16 since the owner's edit for #30; boxes 1–12 unchanged, 13–16 in the second row) | |
-| `ExerciseDifficulity.k`, `ExerciseID.k` | per box: Okno value (only on `n.a` of a Zvlášť Okno, the rest blank) and ID (`R1`, `InvR1`, Zvlášť: `R1.Top`, `R1.Middle2`, `InvR1.Base`) | #30 |
+| `ExerciseDifficulity.k`, `ExerciseID.k` | per box: Okno value (only on `n.a` of a Zvlášť Okno; the value cell of `n.b`, `n.c`, … is greyed, #44) and ID (`R1`, `InvR1`, Zvlášť: `InvR1.Top`, `InvR1.Middle2`, `InvR1.Base`) | #30, #44 |
 | `BoxNumber.k` (optional) | box number `1`, `2.a`, `2.b`, … If the template has no such fields, the printed numbers 1..N are covered and redrawn where they differ (`ReplacePrintedBoxNumber`, geometry of the current template) | #30 |
 | `catNum1`, `catNum2`, `invidualnaZostava`, `stalkovaZostava` | **intentionally left empty** — the coach fills them in by pen on the printed sheet (client's request). Don't fill them. | issue #2 |
 
@@ -211,7 +211,7 @@ Spelling of field names (`Difficulity`, `invidualna`) is baked into the template
 
 Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
 1. `FormData.ToHeaderFieldMap(culture)` (all non-box fields) + `FormData.ToPrintBoxes()` (boxes in routine order:
-   Okno `n`, Zvlášť Okno → `n.a`, `n.b`, … Base → Top, issue #30 Variant B).
+   Okno `n`, Zvlášť Okno → `n.a`, `n.b`, … Top → Base, issue #30 Variant B, #46).
 2. Boxes per page = number of `Image1_af_image.*` fields; pages = ceil(boxes / per page). Each page is a fresh copy of
    the template filled in memory (`FillPage`), then all pages are joined with iText `PdfMerger`.
 3. Per page: embedded Unicode font from `BaseDirectory\Assets\NotoSans-Bold.ttf` (IDENTITY_H) — required for Slovak
@@ -226,7 +226,7 @@ Export pipeline (`TrainingPlanPdfIText.ExportFromFormData`):
    template's fonts/logos are stored once. Before #37 the source PNGs were embedded unchanged (Do 10 plan: 11 MB).
 6. Remove parent `Image1_af_image` (unused boxes print empty); template without `BoxNumber` fields: redraw differing
    box numbers (Helvetica 8.5 pt) and blank the unused ones on extra pages and on any page whose numbering differs
-   (Zvlášť), so a sheet never reads "… 7, 8, 11, 12"; then `form.FlattenFields()`.
+   (Zvlášť), so a sheet never reads "… 7, 8, 11, 12"; then `form.FlattenFields()`; afterwards the value cells of continuation boxes (`PrintBox.IsContinuation`, `n.b`, `n.c`, …) are filled light grey (`GreyOutCells`, DeviceGray 0.8, inset 0.5 pt, #44).
 The 16-box template (2026-10-28) has no `BoxNumber` fields: boxes 1–12 are geometrically identical to the old 12-box
 template, so the redraw geometry fits; the printed 13–16 are slightly smaller but still inside the white cover rect
 (checked on the host at 3× zoom). A plan without Zvlášť prints like the pre-#30 output plus 4 empty boxes (13–16),

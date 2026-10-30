@@ -60,13 +60,15 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
         int X,                  // column (1-based)
         decimal Difficulty,     // from the table's column value
         string ImagePath,
-        int MemberIndex,        // -1 = whole team; 0.. = team member in Base -> Top order (Zvlášť, issue #29)
+        int MemberIndex,        // -1 = whole team; 0.. = team member in Top -> Base order (Zvlášť, issues #29, #46)
         string? Position        // Zvlášť: "Base", "Middle", "Middle1", "Middle2", "Top" (printed as R1.Top); null = whole team
     );
 
     // One picture box on the printed sheet (issue #30). Okno in routine order; a Zvlášť Okno n
-    // becomes n.a, n.b, ... and only n.a carries the Okno value.
-    public sealed record PrintBox(string Label, string ImagePath, decimal? Difficulty, string ExerciseId);
+    // becomes n.a, n.b, ... and only n.a carries the Okno value; n.b, n.c, ... are continuation boxes
+    // whose value cell is greyed out (issue #44).
+    public sealed record PrintBox(string Label, string ImagePath, decimal? Difficulty, string ExerciseId,
+                                  bool IsContinuation = false);
 
     // One Okno: one exercise for the whole team, or one per team member from the same row (Zvlášť)
     public sealed record ExerciseSlotSelection(

@@ -158,8 +158,21 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                     }
                 }
 
+                // Value cells of the continuation boxes (n.b, n.c, ...), read before flattening removes the fields
+                var greyedValueRects = boxes
+                    .Select((b, k) => b.IsContinuation
+                        ? form.GetField(AcroFieldNames.ExerciseDifficultyField(k))?.GetWidgets()?.FirstOrDefault()?.GetRectangle().ToRectangle()
+                        : null)
+                    .OfType<Rectangle>()
+                    .ToList();
+
                 // 4) Flatten remaining fields (text fields etc.)
                 form.FlattenFields();
+
+                // 5) Grey value cell under n.b, n.c, ...: only n.a carries the Okno value (issue #44).
+                // Drawn after flattening, so no field appearance can cover it.
+                if (greyedValueRects.Count > 0)
+                    GreyOutCells(pdfDoc.GetPage(1), greyedValueRects);
             }
 
             return ms.ToArray();
@@ -199,6 +212,20 @@ namespace Atletika_SutaznyPlan_Generator.Models.PdfPrinting
                       .ShowText(label)
                       .EndText();
             }
+
+            canvas.Release();
+        }
+
+        // Light grey (80 % white) fill, inset so the table lines around the cell stay visible
+        private static void GreyOutCells(PdfPage page, IEnumerable<Rectangle> cells)
+        {
+            const float inset = 0.5f;
+            var canvas = new PdfCanvas(page);
+
+            canvas.SaveState().SetFillColor(new DeviceGray(0.8f));
+            foreach (var r in cells)
+                canvas.Rectangle(r.GetLeft() + inset, r.GetBottom() + inset, r.GetWidth() - 2 * inset, r.GetHeight() - 2 * inset);
+            canvas.Fill().RestoreState();
 
             canvas.Release();
         }

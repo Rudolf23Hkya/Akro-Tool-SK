@@ -30,7 +30,9 @@
       <Button Content="Zvlášť"
               Width="90"
               Margin="0,0,8,0"
-              ToolTip="Zvoliť cvičenie zvlášť pre každého pretekára"
+              IsEnabled="{Binding CanSeparate}"
+              ToolTip="{Binding SeparateToolTip}"
+              ToolTipService.ShowOnDisabled="True"
               Click="Separate_Click"/>
       <Button Content="Zrušiť"
               Width="90"
