@@ -41,6 +41,14 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         // Picker cell without an exercise in the rulebook (shown empty, never selectable)
         public bool IsEmptyCell { get; set; }
 
+        // Okno holds an exercise: show the "×" button that empties it (issue #49) — main slots only
+        private bool _isFilled;
+        public bool IsFilled
+        {
+            get => _isFilled;
+            set => SetProperty(ref _isFilled, value);
+        }
+
         // ===== Zvlášť (one exercise per team member, issue #29) — main slots only =====
 
         // Empty Okno in a team age group while an Inv pick is left: show the "Zvlášť" button (issue #43)

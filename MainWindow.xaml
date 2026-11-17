@@ -32,6 +32,19 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+
+        <!-- × on a filled Okno (issue #49) -->
+        <Style x:Key="SlotClearButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="0,-5,0,0"/>
+            <Setter Property="Background" Value="#E6FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#B22222"/>
+            <Setter Property="Foreground" Value="#B22222"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
     </Window.Resources>
 
     <!-- Outer frame (now square, no clipping) -->
@@ -394,6 +407,18 @@
                                             Command="{Binding DataContext.SeparateSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
                                             Visibility="{Binding CanSeparate, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <!-- Filled Okno: empty it, the exercise and its row are free again (issue #49) -->
+                                    <Button Content="×"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,6,6,0"
+                                            Style="{StaticResource SlotClearButtonStyle}"
+                                            AutomationProperties.Name="Odstrániť cvičenie"
+                                            ToolTip="Odstrániť cvičenie z okna"
+                                            Command="{Binding DataContext.ClearSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsFilled, Converter={StaticResource BoolToVisibility}}"/>
                                 </Grid>
                                 </Grid>
                             </DataTemplate>
