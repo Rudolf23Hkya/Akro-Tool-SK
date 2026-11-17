@@ -1,7 +1,8 @@
 ﻿<#
   UI smoke test for Akro Tool SK (Windows only, PowerShell 5.1, no extra modules).
   Drives the real app through Windows UI Automation:
-    startup dialogs -> athlete name -> fills every Okno (team rows first, then Inv) -> Tlačiť -> saves the PDF.
+    startup dialogs -> athlete name -> fills every Okno (team rows first, then Inv) -> × on the last single Okno
+    and the same exercise again (#49) -> Tlačiť -> saves the PDF.
   Screenshots and the PDF go to -OutDir. The host must be logged in and unlocked.
 
   Usage:
@@ -341,6 +342,52 @@ try {
             Click (FindButton $change 'Zrušiť')
             WaitFor { -not (FindWindowByTitle 'Zmeniť cvičenie') } 'change dialog closed' | Out-Null
         }
+    }
+
+    # "×" on a filled Okno (#49): every filled Okno has one; it empties the Okno, frees the pick and the row, and the
+    # Okno can be filled again. The last single (not Zvlášť) Okno is cleared and gets the same exercise back, so the
+    # printed PDF does not change.
+    $clearButtons = @(FindAllOfType $main $CT::Button | Where-Object { $_.Current.Name -eq 'Odstrániť cvičenie' })
+    if ($clearButtons.Count -ne $slotCount) { throw "× buttons: $($clearButtons.Count), expected $slotCount (all Okno filled)" }
+    $target = @(1..$slotCount | Where-Object { $SeparateOkno -notcontains $_ }) | Select-Object -Last 1
+    if ($target) {
+        # All Okno are filled, so the n-th Okno label is Okno n
+        $labelText = @(FindAllOfType $main $CT::Text | Where-Object { $_.Current.Name -match '^[\d.]+ - R\d+ - ' })[$target - 1]
+        $oldLabel = $labelText.Current.Name
+        $tileBtn = TileButton $labelText
+        $null = $oldLabel -match '^([\d.]+) - (R\d+) - '; $gridLabel = "$($Matches[2]) - $($Matches[1])"; $rowId = $Matches[2]
+        $counterBefore = MainTexts | Where-Object { $_ -match '\d+/\d+' } | Select-Object -First 1
+        $x = $Walk.GetNextSibling($tileBtn)
+        while ($x -and $x.Current.Name -ne 'Odstrániť cvičenie') { $x = $Walk.GetNextSibling($x) }
+        if (-not $x) { throw "Okno ${target}: no × button" }
+        HoverShot $x '2_hover_clear'
+        Click $x
+        Start-Sleep -Milliseconds 500
+        $counterAfter = MainTexts | Where-Object { $_ -match '\d+/\d+' } | Select-Object -First 1
+        "× on Okno ${target} ('$oldLabel'): counter '$counterBefore' -> '$counterAfter'"
+        if (-not (FindButtonByLabel $main "^Okno $target$")) { throw "Okno ${target}: label not reset after ×" }
+        if ($counterAfter -eq $counterBefore) { throw "× did not free the pick (counter unchanged)" }
+        $left = @(FindAllOfType $main $CT::Button | Where-Object { $_.Current.Name -eq 'Odstrániť cvičenie' }).Count
+        if ($left -ne $slotCount - 1) { throw "× buttons after clearing: $left, expected $($slotCount - 1)" }
+        if ($teamPicks -gt 0) {
+            $sep = $Walk.GetNextSibling((FindButtonByLabel $main "^Okno $target$"))
+            while ($sep -and $sep.Current.Name -ne 'Zvlášť') { $sep = $Walk.GetNextSibling($sep) }
+            if ($oldLabel -match ' - Inv$' -and -not $sep) { throw "Okno ${target}: Zvlášť button not back after × on an Inv Okno" }
+        }
+        Shot '2_main_after_clear'
+
+        # Fill it again: the freed row must be selectable, pick the same exercise
+        Click (FindButtonByLabel $main "^Okno $target$")
+        $grid = WaitFor { FindWindowByTitle '^Cvi' } "picker for Okno $target after ×"
+        $again = WaitFor { FindAllOfType $grid $CT::Text | Where-Object { $_.Current.Name -eq $gridLabel } | Select-Object -First 1 } "tile $gridLabel"
+        if (-not (TileButton $again).Current.IsEnabled) { throw "Okno ${target}: row $rowId still blocked after ×" }
+        "  Okno ${target} again: $($grid.Current.Name) -> $gridLabel"
+        Click (TileButton $again)
+        WaitFor { -not (FindWindowByTitle '^Cvi') } 'picker closed' | Out-Null
+        Start-Sleep -Milliseconds 300
+        if (-not (FindButtonByLabel $main ([regex]::Escape($oldLabel) + '$'))) { throw "Okno ${target}: label after refill differs from '$oldLabel'" }
+        $counterRefill = MainTexts | Where-Object { $_ -match '\d+/\d+' } | Select-Object -First 1
+        if ($counterRefill -ne $counterBefore) { throw "Counter after refill '$counterRefill', expected '$counterBefore'" }
     }
 
     if (-not $NoPrint) {

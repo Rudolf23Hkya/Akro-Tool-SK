@@ -347,6 +347,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
         public ICommand SeparateSlotCommand { get; }
         public ICommand ShowPreviousExerciseCommand { get; }
         public ICommand ShowNextExerciseCommand { get; }
+        public ICommand ClearSlotCommand { get; }
         public ICommand OpenHistoryCommand { get; }
         public ICommand ExitCommand { get; }
 
@@ -412,6 +413,7 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
             SeparateSlotCommand = new RelayCommand(OpenSlotSeparate);
             ShowPreviousExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, -1));
             ShowNextExerciseCommand = new RelayCommand(p => CycleSeparateExercise(p, +1));
+            ClearSlotCommand = new RelayCommand(ClearSlot);
             OpenHistoryCommand = new RelayCommand(OpenHistory);
             ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
             ExportPdfCommand = new RelayCommand(() => ExportFilledPdf());
@@ -607,8 +609,34 @@ namespace Atletika_SutaznyPlan_Generator.ViewModels
 
             card.IsSeparate = s.IsSeparate;
             card.CanSeparate = false;
+            card.IsFilled = true;
             card.Label = BuildSlotLabel(card.SlotIndex);
             UpdatePerformerText(card);
+        }
+
+        // "×" on a filled Okno (issue #49): empty it in FormData and on the tile. Counts, row blocks and the
+        // "Zvlášť" button are computed from the tiles, so the removed exercise (and its row) is free again.
+        private void ClearSlot(object? parameter)
+        {
+            if (parameter is not ExerciseCardVm card || card.SlotIndex < 0 || card.SlotIndex >= FormData.SlotCount)
+                return;
+
+            FormData.ClearSlot(card.SlotIndex);
+
+            card.ImagePath = null;
+            card.X = 0;
+            card.Y = 0;
+            card.Rulebook = default;
+            card.Category = default;
+            card.SeparateImages = Array.Empty<ImageSource?>();
+            card.ShownExerciseIndex = 0;
+            card.Image = _placeholderImage;
+            card.IsSeparate = false;
+            card.IsFilled = false;
+            card.PerformerText = "";
+            card.Label = $"Okno {card.SlotIndex + 1}";
+
+            RecalculateExerciseSummary();
         }
 
         // ‹ › on a Zvlášť Okno: show the previous / next member's exercise (wraps around)
